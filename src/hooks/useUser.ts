@@ -6,7 +6,7 @@ interface User {
   id: number;
   name: string;
   email: string;
-  // podés agregar más si querés
+  avatar: string;
 }
 
 export const useUser = () => {
@@ -16,7 +16,7 @@ export const useUser = () => {
     const fetchUser = async () => {
       try {
         const token = localStorage.getItem("token");
-        const response = await axios.get("http://localhost:8080/api/user/me", {
+        const response = await axios.get("https://koink-backend-production.up.railway.app/api/user/me", {
           headers: { Authorization: `Bearer ${token}` },
         });
         setUser(response.data);

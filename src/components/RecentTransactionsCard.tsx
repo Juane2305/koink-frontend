@@ -27,7 +27,7 @@ export const RecentTransactionsCard = () => {
     try {
       const token = localStorage.getItem("token");
       const response = await axios.get(
-        "http://localhost:8080/api/transactions",
+        "https://koink-backend-production.up.railway.app/api/transactions",
         {
           headers: {
             Authorization: `Bearer ${token}`,

@@ -10,8 +10,14 @@ import { Button } from "../../components/ui/button";
 import { Pencil, Trash } from "lucide-react";
 import { CreateTransactionModal } from "../../components/CreateTransactionModal";
 import { EditTransactionModal } from "../../components/EditTransactionModal";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../components/ui/dialog"
-
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "../../components/ui/dialog";
+import { useNavigate } from "react-router-dom";
+import { CreateCategoryModal } from "../../components/CreateCategoryModal";
 
 interface Transaction {
   id: number;
@@ -32,12 +38,13 @@ export const TransactionsPage = () => {
   const [transactionToDelete, setTransactionToDelete] =
     useState<Transaction | null>(null);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+  const [showCreateCategoryModal, setShowCreateCategoryModal] = useState(false);
 
   const fetchTransactions = async () => {
     try {
       const token = localStorage.getItem("token");
       const response = await axios.get(
-        "http://localhost:8080/api/transactions",
+        "https://koink-backend-production.up.railway.app/api/transactions",
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -62,36 +69,63 @@ export const TransactionsPage = () => {
   }, []);
 
   const handleDelete = async () => {
-    if (!transactionToDelete) return
+    if (!transactionToDelete) return;
     try {
-      const token = localStorage.getItem("token")
-      await axios.delete(`http://localhost:8080/api/transactions/${transactionToDelete.id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-      setShowConfirmDelete(false)
-      setTransactionToDelete(null)
-      window.dispatchEvent(new Event("transaction-updated"))
-      fetchTransactions()
+      const token = localStorage.getItem("token");
+      await axios.delete(
+        `https://koink-backend-production.up.railway.app/api/transactions/${transactionToDelete.id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      setShowConfirmDelete(false);
+      setTransactionToDelete(null);
+      window.dispatchEvent(new Event("transaction-updated"));
+      fetchTransactions();
     } catch (error) {
-      console.error("Error deleting transaction:", error)
+      console.error("Error deleting transaction:", error);
     }
-  }
-  
+  };
+
+  const navigate = useNavigate();
+
+  const handleComeBack = () => {
+    navigate("/dashboard");
+  };
 
   return (
     <div className="min-h-screen p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-semibold">Todas las transacciones</h1>
-        <Button onClick={() => setShowCreateModal(true)}>
-          Agregar transacción
+      <h1 className="text-2xl font-semibold cursor-default mb-5">
+        Todas las transacciones
+      </h1>
+      <div className="flex justify-end gap-4">
+        <Button
+          onClick={handleComeBack}
+          className="cursor-pointer mb-5"
+          variant={"outline"}
+        >
+          Volver al dashboard
         </Button>
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Historial completo</CardTitle>
+          <Button
+            variant="outline"
+            onClick={() => setShowCreateCategoryModal(true)}
+            className="mt-4"
+          >
+            Crear nueva categoría
+          </Button>
+          <Button
+            onClick={() => setShowCreateModal(true)}
+            className="cursor-pointer mt-2"
+          >
+            Agregar transacción
+          </Button>
         </CardHeader>
         <CardContent>
           <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-2">
@@ -175,14 +209,26 @@ export const TransactionsPage = () => {
           onClose={() => setShowCreateModal(false)}
         />
       )}
-            {showConfirmDelete && transactionToDelete && (
+      {showCreateCategoryModal && (
+        <CreateCategoryModal
+          open={showCreateCategoryModal}
+          onClose={() => setShowCreateCategoryModal(false)}
+          onCreated={() => {
+            setShowCreateCategoryModal(false);
+          }}
+        />
+      )}
+
+      {showConfirmDelete && transactionToDelete && (
         <Dialog open={showConfirmDelete} onOpenChange={setShowConfirmDelete}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>¿Eliminar transacción?</DialogTitle>
             </DialogHeader>
             <p className="text-sm text-muted-foreground">
-              Esta acción eliminará <strong>{transactionToDelete.description}</strong> de forma permanente.
+              Esta acción eliminará{" "}
+              <strong>{transactionToDelete.description}</strong> de forma
+              permanente.
             </p>
             <div className="flex flex-col gap-2 mt-4">
               <Button
@@ -206,8 +252,6 @@ export const TransactionsPage = () => {
           </DialogContent>
         </Dialog>
       )}
-    </div> 
+    </div>
   );
 };
-
- 

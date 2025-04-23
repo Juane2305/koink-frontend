@@ -10,11 +10,12 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "../components/ui/form";
-import { Input } from "../components/ui/input";
-import { Button } from "../components/ui/button";
+} from "../../components/ui/form";
+import { Input } from "../../components/ui/input";
+import { Button } from "../../components/ui/button";
 import { useState } from "react";
 import { GoogleLoginButton } from "./GoogleLoginButton";
+import { Loader2 } from "lucide-react";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Correo inválido" }),
@@ -34,14 +35,16 @@ export function LoginForm() {
 
   const navigate = useNavigate();
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false); 
 
   const onSubmit = async (values: FormValues) => {
+    setLoading(true); 
+    setError("");
     try {
       const response = await axios.post(
-        "http://localhost:8080/api/auth/login",
+        "https://koink-backend-production.up.railway.app/api/auth/login",
         values
       );
-      console.log("Login response:", response.data);
 
       const { token, name } = response.data;
 
@@ -57,6 +60,8 @@ export function LoginForm() {
     } catch (err) {
       console.error("Login error:", err);
       setError("Usuario o contraseña incorrectos");
+    } finally {
+      setLoading(false); 
     }
   };
 
@@ -93,10 +98,12 @@ export function LoginForm() {
           )}
         />
 
-        <Button type="submit" className="w-full">
-          Ingresar
+        <Button type="submit" className="w-full" disabled={loading}>
+          {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          {loading ? "Ingresando..." : "Ingresar"}
         </Button>
-        <GoogleLoginButton/>
+
+        <GoogleLoginButton />
       </form>
     </Form>
   );

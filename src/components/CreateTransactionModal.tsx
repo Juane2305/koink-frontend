@@ -1,11 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "./ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -17,6 +12,7 @@ import {
   SelectValue,
 } from "./ui/select";
 import { Calendar } from "./ui/calendar";
+import { Loader2 } from "lucide-react";
 
 type TransactionType = "INCOME" | "EXPENSE";
 
@@ -41,13 +37,17 @@ export const CreateTransactionModal = ({
   const [categoryId, setCategoryId] = useState<number | null>(null);
   const [type, setType] = useState<TransactionType>("EXPENSE");
   const [date, setDate] = useState<Date | undefined>(new Date());
+  const [loading, setLoading] = useState(false);
 
   const fetchCategories = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get("http://localhost:8080/api/categories", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await axios.get(
+        "https://koink-backend-production.up.railway.app/api/categories",
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
       setCategories(response.data);
     } catch (error) {
       console.error("Error fetching categories:", error);
@@ -55,6 +55,7 @@ export const CreateTransactionModal = ({
   };
 
   const handleSubmit = async () => {
+    setLoading(true);
     if (!categoryId || !date || amount <= 0) return;
     const formattedDate = date.toISOString().split("T")[0];
     console.log(formattedDate);
@@ -62,7 +63,7 @@ export const CreateTransactionModal = ({
     try {
       const token = localStorage.getItem("token");
       await axios.post(
-        "http://localhost:8080/api/transactions",
+        "https://koink-backend-production.up.railway.app/api/transactions",
         {
           description,
           amount,
@@ -87,12 +88,17 @@ export const CreateTransactionModal = ({
       setDate(new Date());
     } catch (error) {
       console.error("Error creating transaction:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
     if (open) fetchCategories();
   }, [open]);
+
+  const isFormValid =
+    description.trim() !== "" && amount > 0 && categoryId !== null && !!date;
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -180,8 +186,13 @@ export const CreateTransactionModal = ({
             />
           </div>
 
-          <Button onClick={handleSubmit} className="w-full">
-            Guardar
+          <Button
+            onClick={handleSubmit}
+            className="w-full"
+            disabled={loading || !isFormValid}
+          >
+            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {loading ? "Guardando..." : "Guardar"}
           </Button>
         </div>
       </DialogContent>

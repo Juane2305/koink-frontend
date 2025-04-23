@@ -13,8 +13,8 @@ import { RecentTransactionsCard } from "../components/RecentTransactionsCard";
 import { ActiveBudgetsCard } from "../components/ActiveBudgetsCard";
 import { CreateTransactionModal } from "../components/CreateTransactionModal";
 import { Button } from "../components/ui/button";
-import { Link } from "react-router-dom";
 import { LogoutButton } from "../components/LogoutButton";
+import { ReportsChart } from "../components/ReportsChart";
 
 export const DashboardPage = () => {
   const { data, loading, refetch } = useDashboardData();
@@ -41,8 +41,6 @@ export const DashboardPage = () => {
     );
   }
 
-  
-
   if (!data) {
     return (
       <p className="text-center mt-10 text-red-500">
@@ -50,8 +48,6 @@ export const DashboardPage = () => {
       </p>
     );
   }
-
-  
 
   return (
     <div className="min-h-screen p-4 md:p-6 bg-gray-50">
@@ -64,17 +60,12 @@ export const DashboardPage = () => {
       </h1>
 
       <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-4">
-        <h2 className="text-xl font-semibold">Dashboard</h2>
+        <h2 className="text-xl font-semibold mt-10">Dashboard</h2>
 
-        <div className="flex flex-col sm:flex-row gap-2 md:gap-4">
-          <Link to="/transactions">
-            <Button variant="outline" className="w-full sm:w-auto">
-              Ver todas las transacciones
-            </Button>
-          </Link>
+        <div className="">
           <Button
             onClick={() => setShowModal(true)}
-            className="w-full sm:w-auto"
+            className="w-full sm:w-auto cursor-pointer"
           >
             Registrar ingreso / egreso
           </Button>
@@ -86,7 +77,6 @@ export const DashboardPage = () => {
         />
       </div>
 
-      {/* MÉTRICAS */}
       <div className="grid gap-4 md:grid-cols-3 mb-6">
         <Card className="bg-green-100 border-green-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -129,6 +119,10 @@ export const DashboardPage = () => {
       <div className="grid gap-4 md:grid-cols-2">
         <ActiveBudgetsCard />
         <RecentTransactionsCard />
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 mt-6">
+        <ReportsChart />
       </div>
     </div>
   );

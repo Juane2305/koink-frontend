@@ -16,7 +16,7 @@ export const useDashboardData = () => {
   const fetchData = async () => {
     try {
       const token = localStorage.getItem("token")
-      const response = await axios.get("http://localhost:8080/api/dashboard", {
+      const response = await axios.get("https://koink-backend-production.up.railway.app/api/dashboard", {
         headers: {
           Authorization: `Bearer ${token}`,
         },

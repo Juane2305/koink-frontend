@@ -1,9 +1,9 @@
-import { Button } from "../components/ui/button"
+import { Button } from "../../components/ui/button"
 import { FcGoogle } from "react-icons/fc"
 
 export function GoogleLoginButton() {
   const handleGoogleLogin = () => {
-    window.location.href = "http://localhost:8080/oauth2/authorization/google"
+    window.location.href = "https://koink-backend-production.up.railway.app/oauth2/authorization/google"
   }
 
   return (

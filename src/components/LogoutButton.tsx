@@ -9,13 +9,13 @@ export const LogoutButton = () => {
 
   const handleLogout = () => {
     localStorage.removeItem("token");
-    navigate("/login");
+    navigate("/");
   };
 
   if (!isAuthenticated) return null;
 
   return (
-    <Button variant="outline" onClick={handleLogout}>
+    <Button variant="outline" onClick={handleLogout} className=" cursor-pointer">
       Cerrar sesión
     </Button>
   );

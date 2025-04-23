@@ -12,10 +12,10 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "../components/ui/form"
-import { Input } from "../components/ui/input"
-import { Button } from "../components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select"
+} from "../../components/ui/form"
+import { Input } from "../../components/ui/input"
+import { Button } from "../../components/ui/button"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select"
 import { GoogleLoginButton } from "./GoogleLoginButton"
 
 const formSchema = z.object({
@@ -23,9 +23,27 @@ const formSchema = z.object({
   password: z.string().min(6, { message: "Mínimo 6 caracteres" }),
   name: z.string().min(2, { message: "Debe tener al menos 2 caracteres" }),
   currency: z.string().min(1, { message: "Seleccioná una moneda" }),
+  avatar: z.string().min(1, { message: "Seleccioná un avatar" })
 })
 
 type FormValues = z.infer<typeof formSchema>
+
+const avatars = [
+  "/avatars/avatar1.png",
+  "/avatars/avatar2.png",
+  "/avatars/avatar3.png",
+  "/avatars/avatar4.png",
+  "/avatars/avatar5.png",
+  "/avatars/avatar6.png",
+  "/avatars/avatar7.png",
+  "/avatars/avatar8.png",
+  "/avatars/avatar9.png",
+  "/avatars/avatar10.png",
+  "/avatars/avatar11.png",
+  "/avatars/avatar12.png",
+  "/avatars/default-avatar.png",
+
+]
 
 export function RegisterForm() {
   const [step, setStep] = useState(1)
@@ -38,12 +56,13 @@ export function RegisterForm() {
       password: "",
       name: "",
       currency: "",
+      avatar: ""
     },
   })
 
   const onSubmit = async (values: FormValues) => {
     try {
-      await axios.post("http://localhost:8080/api/auth/register", values)
+      await axios.post("https://koink-backend-production.up.railway.app/api/auth/register", values)
       navigate("/login")
     } catch (error) {
       console.error("Error al registrar:", error)
@@ -51,7 +70,8 @@ export function RegisterForm() {
   }
 
   const handleNext = async () => {
-    const currentField = ["email", "password", "name", "currency"][step - 1] as keyof FormValues
+    const fields: (keyof FormValues)[] = ["email", "password", "name", "currency", "avatar"]
+    const currentField = fields[step - 1]
     const isStepValid = await form.trigger(currentField)
     if (isStepValid) setStep(step + 1)
   }
@@ -133,6 +153,30 @@ export function RegisterForm() {
           />
         )}
 
+        {step === 5 && (
+          <FormField
+            control={form.control}
+            name="avatar"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Seleccioná un avatar</FormLabel>
+                <div className="flex flex-wrap gap-4">
+                  {avatars.map((src) => (
+                    <img
+                      key={src}
+                      src={src}
+                      alt="Avatar"
+                      onClick={() => field.onChange(src)}
+                      className={`w-16 h-16 rounded-full border-2 cursor-pointer object-cover transition hover:scale-105 ${field.value === src ? "border-blue-600" : "border-transparent"}`}
+                    />
+                  ))}
+                </div>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
+
         <div className="flex justify-between">
           {step > 1 && (
             <Button type="button" variant="outline" onClick={() => setStep(step - 1)}>
@@ -140,13 +184,13 @@ export function RegisterForm() {
             </Button>
           )}
 
-          {step < 4 && (
+          {step < 5 && (
             <Button type="button" onClick={handleNext}>
               Siguiente
             </Button>
           )}
 
-          {step === 4 && (
+          {step === 5 && (
             <Button type="submit">Crear cuenta</Button>
           )}
         </div>

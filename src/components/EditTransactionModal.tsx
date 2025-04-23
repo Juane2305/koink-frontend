@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from "../components/ui/select";
 import { Calendar } from "../components/ui/calendar";
+import { Loader2 } from "lucide-react";
 
 export type TransactionType = "INCOME" | "EXPENSE";
 
@@ -59,13 +60,14 @@ export const EditTransactionModal = ({
     transaction.categoryId == null
   );
   const [categoryError, setCategoryError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const fetchCategories = async () => {
       try {
         const token = localStorage.getItem("token");
         const response = await axios.get(
-          "http://localhost:8080/api/categories",
+          "https://koink-backend-production.up.railway.app/api/categories",
           {
             headers: { Authorization: `Bearer ${token}` },
           }
@@ -92,6 +94,7 @@ export const EditTransactionModal = ({
   }, [type]);
 
   const handleSubmit = async () => {
+    setLoading(true);
     if (!selectedCategory) {
       setCategoryError("Debes seleccionar una categoría.");
       return;
@@ -100,7 +103,7 @@ export const EditTransactionModal = ({
     try {
       const token = localStorage.getItem("token");
       await axios.put(
-        `http://localhost:8080/api/transactions/${transaction.id}`,
+        `https://koink-backend-production.up.railway.app/api/transactions/${transaction.id}`,
         {
           description,
           amount,
@@ -119,10 +122,13 @@ export const EditTransactionModal = ({
       onClose();
     } catch (error) {
       console.error("Error updating transaction:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
-
+  const isFormValid =
+    description.trim() !== "" && amount > 0 && selectedCategory !== null && !!date;
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -228,8 +234,13 @@ export const EditTransactionModal = ({
           </div>
 
           <div className="flex gap-2">
-            <Button onClick={handleSubmit} className="w-full">
-              Guardar cambios
+            <Button
+              onClick={handleSubmit}
+              className="w-full"
+              disabled={loading || !isFormValid}
+            >
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {loading ? "Guardando..." : "Guardar cambios"}
             </Button>
           </div>
         </div>
