@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
+import api from "../lib/api";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Button } from "../components/ui/button";
@@ -39,7 +39,7 @@ export const ProfilePage = () => {
     const fetchUser = async () => {
       try {
         const token = localStorage.getItem("token");
-        const res = await axios.get("https://koink-backend-production.up.railway.app/api/user/me", {
+        const res = await api.get("/api/user/me", {
           headers: { Authorization: `Bearer ${token}` },
         });
         setUser(res.data);
@@ -57,8 +57,8 @@ export const ProfilePage = () => {
     setSaving(true);
     try {
       const token = localStorage.getItem("token");
-      await axios.put(
-        "https://koink-backend-production.up.railway.app/api/user/me",
+      await api.put(
+        "/api/user/me",
         {
           name: user.name,
           currency: user.currency,

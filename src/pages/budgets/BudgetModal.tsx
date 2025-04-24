@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import api from "../../lib/api";
 import axios from "axios";
 import {
   Dialog,
@@ -45,8 +46,8 @@ export const BudgetModal = ({ open, onClose, initialData }: Props) => {
   const fetchCategories = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get(
-        "https://koink-backend-production.up.railway.app/api/categories",
+      const res = await api.get(
+        "/api/categories",
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -86,8 +87,8 @@ export const BudgetModal = ({ open, onClose, initialData }: Props) => {
       startDate: startDate.toISOString().split("T")[0],
     };
 
-    await axios.post(
-      "https://koink-backend-production.up.railway.app/api/budgets",
+    await api.post(
+      "/api/budgets",
       payload,
       {
         headers: { Authorization: `Bearer ${token}` },
@@ -104,8 +105,8 @@ export const BudgetModal = ({ open, onClose, initialData }: Props) => {
       startDate: startDate.toISOString().split("T")[0],
     };
 
-    await axios.put(
-      `https://koink-backend-production.up.railway.app/api/budgets/${
+    await api.put(
+      `/api/budgets/${
         initialData!.id
       }`,
       payload,

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
+import api from "../lib/api";
 import {
   ResponsiveContainer,
   PieChart,
@@ -51,12 +51,12 @@ export const ReportsChart = () => {
     try {
       setLoading(true);
       const [catRes, monthRes] = await Promise.all([
-        axios.get(
-          `https://koink-backend-production.up.railway.app/api/reports/monthly?month=${month}&year=${year}`,
+        api.get(
+          `/api/reports/monthly?month=${month}&year=${year}`,
           { headers: { Authorization: `Bearer ${token}` } }
         ),
-        axios.get(
-          `https://koink-backend-production.up.railway.app/api/reports/yearly?year=${year}`,
+        api.get(
+          `/api/reports/yearly?year=${year}`,
           { headers: { Authorization: `Bearer ${token}` } }
         ),
       ]);

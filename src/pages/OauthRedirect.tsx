@@ -1,39 +1,35 @@
-import { useEffect } from "react"
-import { useNavigate } from "react-router-dom"
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 export const OauthRedirect = () => {
-  const navigate = useNavigate()
+  const navigate = useNavigate();
 
   useEffect(() => {
-    console.log("🌐 Entré al componente OauthRedirect")
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get("token");
+    const refreshToken = urlParams.get("refreshToken");
+    const newUser = urlParams.get("new") === "true";
 
-    const urlParams = new URLSearchParams(window.location.search)
-    const token = urlParams.get("token")
-    const newUser = urlParams.get("new") === "true"
+    if (token && refreshToken) {
+      localStorage.setItem("token", token);
+      localStorage.setItem("refreshToken", refreshToken);
 
-    console.log("🔐 Token recibido desde URL:", token)
-    console.log("🆕 Usuario nuevo:", newUser)
-
-    if (token) {
-      localStorage.setItem("token", token)
-      console.log("💾 Token guardado en localStorage")
-
-      // Animación de transición suave
       setTimeout(() => {
         if (newUser) {
-          navigate("/welcome")
+          navigate("/welcome");
         } else {
-          navigate("/dashboard")
+          navigate("/dashboard");
         }
-      }, 1000)
+      }, 1000);
     } else {
-      navigate("/login")
+      navigate("/login");
     }
-  }, [navigate])
+  }, [navigate]);
 
   return (
     <div className="flex h-screen items-center justify-center">
       <p className="text-lg font-semibold animate-pulse">Redirigiendo...</p>
     </div>
-  )
-}
+  );
+};
+

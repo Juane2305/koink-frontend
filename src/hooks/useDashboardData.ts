@@ -1,6 +1,6 @@
 // src/hooks/useDashboardData.ts
 import { useEffect, useState } from "react"
-import axios from "axios"
+import api from "../lib/api"
 
 interface DashboardData {
   totalIncome: number
@@ -16,7 +16,7 @@ export const useDashboardData = () => {
   const fetchData = async () => {
     try {
       const token = localStorage.getItem("token")
-      const response = await axios.get("https://koink-backend-production.up.railway.app/api/dashboard", {
+      const response = await api.get("/api/dashboard", {
         headers: {
           Authorization: `Bearer ${token}`,
         },

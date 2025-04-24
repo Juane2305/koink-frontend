@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
+import api from "../lib/api";
 import {
   Dialog,
   DialogContent,
@@ -66,8 +66,8 @@ export const EditTransactionModal = ({
     const fetchCategories = async () => {
       try {
         const token = localStorage.getItem("token");
-        const response = await axios.get(
-          "https://koink-backend-production.up.railway.app/api/categories",
+        const response = await api.get(
+          "/api/categories",
           {
             headers: { Authorization: `Bearer ${token}` },
           }
@@ -102,8 +102,8 @@ export const EditTransactionModal = ({
 
     try {
       const token = localStorage.getItem("token");
-      await axios.put(
-        `https://koink-backend-production.up.railway.app/api/transactions/${transaction.id}`,
+      await api.put(
+        `/api/transactions/${transaction.id}`,
         {
           description,
           amount,

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
+import api from "../../lib/api";
 import { Budget } from "./types";
 
 export const useBudgets = () => {
@@ -9,7 +9,7 @@ export const useBudgets = () => {
   const fetchBudgets = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get("https://koink-backend-production.up.railway.app/api/budgets", {
+      const res = await api.get("/api/budgets", {
         headers: { Authorization: `Bearer ${token}` },
       });
       setBudgets(res.data);

@@ -4,7 +4,7 @@ import { Button } from "../../components/ui/button";
 import { Progress } from "../../components/ui/progress";
 import { Pencil, Trash2, Loader2 } from "lucide-react";
 import { BudgetModal } from "./BudgetModal";
-import axios from "axios";
+import api from "../../lib/api";
 import { Badge } from "../../components/ui/badge";
 import {
   AlertDialog,
@@ -45,8 +45,8 @@ export const BudgetCard = ({ budget, onRefresh }: Props) => {
     setDeleting(true);
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(
-        `https://koink-backend-production.up.railway.app/api/budgets/${budget.id}`,
+      await api.delete(
+        `/api/budgets/${budget.id}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }

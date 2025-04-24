@@ -1,6 +1,6 @@
 // hooks/useUser.ts
 import { useEffect, useState } from "react";
-import axios from "axios";
+import api from "../lib/api";
 
 interface User {
   id: number;
@@ -16,7 +16,7 @@ export const useUser = () => {
     const fetchUser = async () => {
       try {
         const token = localStorage.getItem("token");
-        const response = await axios.get("https://koink-backend-production.up.railway.app/api/user/me", {
+        const response = await api.get("/api/user/me", {
           headers: { Authorization: `Bearer ${token}` },
         });
         setUser(response.data);

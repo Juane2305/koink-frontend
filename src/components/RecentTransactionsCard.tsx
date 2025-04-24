@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
+import api from "../lib/api";
 import {
   Card,
   CardContent,
@@ -26,8 +26,8 @@ export const RecentTransactionsCard = () => {
   const fetchTransactions = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get(
-        "https://koink-backend-production.up.railway.app/api/transactions",
+      const response = await api.get(
+        "/api/transactions",
         {
           headers: {
             Authorization: `Bearer ${token}`,

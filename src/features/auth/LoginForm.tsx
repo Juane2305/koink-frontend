@@ -1,7 +1,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import axios from "axios";
+import api from "../../lib/api";
 import { useNavigate } from "react-router-dom";
 import {
   Form,
@@ -41,21 +41,19 @@ export function LoginForm() {
     setLoading(true); 
     setError("");
     try {
-      const response = await axios.post(
-        "https://koink-backend-production.up.railway.app/api/auth/login",
-        values
-      );
-
-      const { token, name } = response.data;
-
-      if (!token || !name) {
+      const response = await api.post("/api/auth/login", values);
+  
+      const { accessToken, refreshToken, name } = response.data;
+  
+      if (!accessToken || !refreshToken || !name) {
         setError("Datos inválidos del servidor");
         return;
       }
-
-      localStorage.setItem("token", token);
+  
+      localStorage.setItem("token", accessToken);
+      localStorage.setItem("refreshToken", refreshToken);
       localStorage.setItem("user", JSON.stringify({ name }));
-
+  
       navigate("/dashboard");
     } catch (err) {
       console.error("Login error:", err);
@@ -64,6 +62,7 @@ export function LoginForm() {
       setLoading(false); 
     }
   };
+  
 
   return (
     <Form {...form}>

@@ -1,6 +1,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import api from "../lib/api";
 import axios from "axios";
 import {
   Dialog,
@@ -56,8 +57,8 @@ export const CreateCategoryModal = ({ open, onClose, onCreated }: Props) => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      await axios.post(
-        "https://koink-backend-production.up.railway.app/api/categories",
+      await api.post(
+        "/api/categories",
         values,
         { headers: { Authorization: `Bearer ${token}` } }
       );

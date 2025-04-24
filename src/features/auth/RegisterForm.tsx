@@ -2,7 +2,7 @@ import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import axios from "axios"
+import api from "../../lib/api"
 import { useNavigate } from "react-router-dom"
 
 import {
@@ -62,7 +62,7 @@ export function RegisterForm() {
 
   const onSubmit = async (values: FormValues) => {
     try {
-      await axios.post("https://koink-backend-production.up.railway.app/api/auth/register", values)
+      await api.post("/api/auth/register", values)
       navigate("/login")
     } catch (error) {
       console.error("Error al registrar:", error)

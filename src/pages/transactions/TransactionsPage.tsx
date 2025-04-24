@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
+import api from "../../lib/api";
 import {
   Card,
   CardHeader,
@@ -43,8 +43,8 @@ export const TransactionsPage = () => {
   const fetchTransactions = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get(
-        "https://koink-backend-production.up.railway.app/api/transactions",
+      const response = await api.get(
+        "/api/transactions",
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -72,8 +72,8 @@ export const TransactionsPage = () => {
     if (!transactionToDelete) return;
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(
-        `https://koink-backend-production.up.railway.app/api/transactions/${transactionToDelete.id}`,
+      await api.delete(
+        `/api/transactions/${transactionToDelete.id}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -172,9 +172,6 @@ export const TransactionsPage = () => {
                           <Pencil className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() =>
-                            console.log("Eliminar transacción", tx.id)
-                          }
                           className="text-muted-foreground hover:text-destructive transition"
                         >
                           <Trash
