@@ -7,12 +7,10 @@ export const OauthRedirect = () => {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get("token");
-    const refreshToken = urlParams.get("refreshToken");
     const newUser = urlParams.get("new") === "true";
 
-    if (token && refreshToken) {
+    if (token) {
       localStorage.setItem("token", token);
-      localStorage.setItem("refreshToken", refreshToken);
 
       setTimeout(() => {
         if (newUser) {
@@ -32,4 +30,3 @@ export const OauthRedirect = () => {
     </div>
   );
 };
-

@@ -38,20 +38,19 @@ export function LoginForm() {
   const [loading, setLoading] = useState(false); 
 
   const onSubmit = async (values: FormValues) => {
-    setLoading(true); 
+    setLoading(true);
     setError("");
     try {
       const response = await api.post("/api/auth/login", values);
   
-      const { accessToken, refreshToken, name } = response.data;
+      const { token, name } = response.data;
   
-      if (!accessToken || !refreshToken || !name) {
+      if (!token || !name) {
         setError("Datos inválidos del servidor");
         return;
       }
   
-      localStorage.setItem("token", accessToken);
-      localStorage.setItem("refreshToken", refreshToken);
+      localStorage.setItem("token", token);
       localStorage.setItem("user", JSON.stringify({ name }));
   
       navigate("/dashboard");
@@ -59,7 +58,7 @@ export function LoginForm() {
       console.error("Login error:", err);
       setError("Usuario o contraseña incorrectos");
     } finally {
-      setLoading(false); 
+      setLoading(false);
     }
   };
   
