@@ -15,11 +15,13 @@ import { CreateTransactionModal } from "../components/CreateTransactionModal";
 import { Button } from "../components/ui/button";
 import { LogoutButton } from "../components/LogoutButton";
 import { ReportsChart } from "../components/ReportsChart";
+import { useNavigate } from "react-router-dom";
 
 export const DashboardPage = () => {
   const { data, loading, refetch } = useDashboardData();
   const [showModal, setShowModal] = useState(false);
   const [typeSelected, setTypeSelected] = useState<"INCOME" | "EXPENSE">("INCOME");
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handleUpdate = () => {
@@ -38,6 +40,9 @@ export const DashboardPage = () => {
         <Skeleton className="h-32" />
         <Skeleton className="h-32" />
         <Skeleton className="h-32" />
+        <Skeleton className="h-80" />
+        <Skeleton className="h-80" />
+        <Skeleton className="h-80" />
       </div>
     );
   }
@@ -104,7 +109,7 @@ export const DashboardPage = () => {
           </CardContent>
         </Card>
 
-        <Card className="bg-blue-100 border-blue-300">
+        <Card className="bg-blue-100 border-blue-300 cursor-pointer" onClick={()=> navigate("/transactions")}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Balance</CardTitle>
             <DollarSign className="h-6 w-6 text-blue-700" />
