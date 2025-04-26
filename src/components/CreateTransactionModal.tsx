@@ -25,17 +25,19 @@ interface Category {
 interface CreateTransactionModalProps {
   open: boolean;
   onClose: () => void;
+  typeSelected: TransactionType;
 }
 
 export const CreateTransactionModal = ({
   open,
   onClose,
+  typeSelected,
 }: CreateTransactionModalProps) => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState(0);
   const [categoryId, setCategoryId] = useState<number | null>(null);
-  const [type, setType] = useState<TransactionType>("EXPENSE");
+  const [type, setType] = useState<TransactionType>(typeSelected);
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [loading, setLoading] = useState(false);
 
@@ -75,10 +77,8 @@ export const CreateTransactionModal = ({
         }
       );
 
-      // Emitimos evento global
       window.dispatchEvent(new Event("transaction-created"));
 
-      // Limpiar y cerrar
       onClose();
       setDescription("");
       setAmount(0);
@@ -93,8 +93,11 @@ export const CreateTransactionModal = ({
   };
 
   useEffect(() => {
-    if (open) fetchCategories();
-  }, [open]);
+    if (open) {
+      setType(typeSelected);
+      fetchCategories();
+    }
+  }, [open, typeSelected]);
 
   const isFormValid =
     description.trim() !== "" && amount > 0 && categoryId !== null && !!date;

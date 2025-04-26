@@ -204,6 +204,7 @@ export const TransactionsPage = () => {
         <CreateTransactionModal
           open={showCreateModal}
           onClose={() => setShowCreateModal(false)}
+          typeSelected="EXPENSE"
         />
       )}
       {showCreateCategoryModal && (

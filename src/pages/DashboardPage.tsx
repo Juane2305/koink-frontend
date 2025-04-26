@@ -19,6 +19,7 @@ import { ReportsChart } from "../components/ReportsChart";
 export const DashboardPage = () => {
   const { data, loading, refetch } = useDashboardData();
   const [showModal, setShowModal] = useState(false);
+  const [typeSelected, setTypeSelected] = useState<"INCOME" | "EXPENSE">("INCOME");
 
   useEffect(() => {
     const handleUpdate = () => {
@@ -64,7 +65,7 @@ export const DashboardPage = () => {
 
         <div className="">
           <Button
-            onClick={() => setShowModal(true)}
+            onClick={() => {setShowModal(true) ; setTypeSelected("EXPENSE");}}
             className="w-full sm:w-auto cursor-pointer"
           >
             Registrar ingreso / egreso
@@ -74,11 +75,12 @@ export const DashboardPage = () => {
         <CreateTransactionModal
           open={showModal}
           onClose={() => setShowModal(false)}
+          typeSelected={typeSelected}
         />
       </div>
 
       <div className="grid gap-4 md:grid-cols-3 mb-6">
-        <Card className="bg-green-100 border-green-300">
+        <Card className="bg-green-100 border-green-300 cursor-pointer" onClick={() => { setShowModal(true); setTypeSelected("INCOME"); }}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Ingresos</CardTitle>
             <ArrowUpCircle className="h-6 w-6 text-green-700" />
@@ -90,7 +92,7 @@ export const DashboardPage = () => {
           </CardContent>
         </Card>
 
-        <Card className="bg-red-100 border-red-300">
+        <Card className="bg-red-100 border-red-300 cursor-pointer" onClick={()=> {setShowModal(true); setTypeSelected("EXPENSE");}}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Egresos</CardTitle>
             <ArrowDownCircle className="h-6 w-6 text-red-700" />
