@@ -8,7 +8,14 @@ import {
   CardTitle,
 } from "../components/ui/card";
 import { Skeleton } from "../components/ui/skeleton";
-import { ArrowDownCircle, ArrowUpCircle, DollarSign } from "lucide-react";
+import { 
+  ArrowDownCircle, 
+  ArrowUpCircle, 
+  DollarSign, 
+  PiggyBank, 
+  Plus,
+  LayoutDashboard
+} from "lucide-react";
 import { RecentTransactionsCard } from "../components/RecentTransactionsCard";
 import { ActiveBudgetsCard } from "../components/ActiveBudgetsCard";
 import { CreateTransactionModal } from "../components/CreateTransactionModal";
@@ -22,115 +29,157 @@ export const DashboardPage = () => {
   const [showModal, setShowModal] = useState(false);
   const [typeSelected, setTypeSelected] = useState<"INCOME" | "EXPENSE">("INCOME");
   const navigate = useNavigate();
+  const user = useUser();
 
   useEffect(() => {
-    const handleUpdate = () => {
-      refetch();
-    };
+    const handleUpdate = () => refetch();
     window.addEventListener("transaction-created", handleUpdate);
-    return () =>
-      window.removeEventListener("transaction-created", handleUpdate);
+    return () => window.removeEventListener("transaction-created", handleUpdate);
   }, [refetch]);
-
-  const user = useUser();
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4">
-        <Skeleton className="h-32" />
-        <Skeleton className="h-32" />
-        <Skeleton className="h-32" />
-        <Skeleton className="h-80" />
-        <Skeleton className="h-80" />
-        <Skeleton className="h-80" />
+      <div className="p-6 space-y-6">
+        <div className="flex justify-between items-center">
+          <Skeleton className="h-10 w-32" />
+          <Skeleton className="h-10 w-10 rounded-full" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Skeleton className="h-32 rounded-xl" />
+          <Skeleton className="h-32 rounded-xl" />
+          <Skeleton className="h-32 rounded-xl" />
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Skeleton className="h-96 rounded-xl" />
+          <Skeleton className="h-96 rounded-xl" />
+        </div>
       </div>
     );
   }
 
-  if (!data) {
-    return (
-      <p className="text-center mt-10 text-red-500">
-        No se pudieron cargar los datos.
-      </p>
-    );
-  }
+  if (!data) return <p className="text-center mt-10 text-red-500">Error al cargar datos.</p>;
 
   return (
-    <div className="min-h-screen p-4 md:p-6 bg-gray-50">
-      <div className="flex justify-end">
-        <LogoutButton />
-      </div>
+    <div className="min-h-screen bg-[#f8fafc]">
+      {/* HEADER / NAVBAR */}
+      <header className="sticky top-0 z-30 w-full bg-white/80 backdrop-blur-md border-b">
+        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2 font-bold text-xl text-indigo-600">
+            <PiggyBank className="h-6 w-6" />
+            <span className="hidden sm:inline tracking-tight">Koink.</span>
+          </div>
 
-      <h1 className="text-center text-2xl font-semibold mt-5">
-        {user ? `Bienvenido, ${user.name.split(" ")[0]} 👋` : "Koink App"}
-      </h1>
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-medium text-slate-600 hidden sm:block">
+              Hola, {user?.name.split(" ")[0]} 👋
+            </span>
+            <LogoutButton />
+          </div>
+        </div>
+      </header>
 
-      <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-4">
-        <h2 className="text-xl font-semibold mt-10">Dashboard</h2>
+      <main className="container mx-auto p-4 md:p-8 space-y-8">
+        {/* TÍTULO Y ACCIÓN PRINCIPAL */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+              <LayoutDashboard className="h-8 w-8 text-indigo-500" />
+              Dashboard
+            </h1>
+            <p className="text-slate-500 text-sm">Gestiona tus movimientos y presupuestos.</p>
+          </div>
 
-        <div className="">
           <Button
-            onClick={() => {setShowModal(true) ; setTypeSelected("EXPENSE");}}
-            className="w-full sm:w-auto cursor-pointer"
+            onClick={() => { setShowModal(true); setTypeSelected("EXPENSE"); }}
+            className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all h-12 px-6"
           >
-            Registrar ingreso / egreso
+            <Plus className="mr-2 h-5 w-5" />
+            Nueva Transacción
           </Button>
         </div>
 
-        <CreateTransactionModal
-          open={showModal}
-          onClose={() => setShowModal(false)}
-          typeSelected={typeSelected}
-        />
-      </div>
+        {/* TARJETAS DE RESUMEN */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* INGRESOS */}
+          <Card 
+            className="relative overflow-hidden border-none shadow-sm cursor-pointer hover:shadow-md transition-shadow group"
+            onClick={() => { setShowModal(true); setTypeSelected("INCOME"); }}
+          >
+            <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500" />
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-slate-500 uppercase tracking-wider">Ingresos</CardTitle>
+              <div className="p-2 bg-emerald-50 rounded-lg text-emerald-600 group-hover:scale-110 transition-transform">
+                <ArrowUpCircle className="h-5 w-5" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-slate-900">
+                ${data.totalIncome.toLocaleString("es-AR")}
+              </div>
+            </CardContent>
+          </Card>
 
-      <div className="grid gap-4 md:grid-cols-3 mb-6">
-        <Card className="bg-green-100 border-green-300 cursor-pointer" onClick={() => { setShowModal(true); setTypeSelected("INCOME"); }}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Ingresos</CardTitle>
-            <ArrowUpCircle className="h-6 w-6 text-green-700" />
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold text-green-800">
-              ${data.totalIncome.toLocaleString("es-AR")}
-            </p>
-          </CardContent>
-        </Card>
+          {/* EGRESOS */}
+          <Card 
+            className="relative overflow-hidden border-none shadow-sm cursor-pointer hover:shadow-md transition-shadow group"
+            onClick={() => { setShowModal(true); setTypeSelected("EXPENSE"); }}
+          >
+            <div className="absolute top-0 left-0 w-1 h-full bg-rose-500" />
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-slate-500 uppercase tracking-wider">Egresos</CardTitle>
+              <div className="p-2 bg-rose-50 rounded-lg text-rose-600 group-hover:scale-110 transition-transform">
+                <ArrowDownCircle className="h-5 w-5" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-slate-900">
+                ${data.totalExpense.toLocaleString("es-AR")}
+              </div>
+            </CardContent>
+          </Card>
 
-        <Card className="bg-red-100 border-red-300 cursor-pointer" onClick={()=> {setShowModal(true); setTypeSelected("EXPENSE");}}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Egresos</CardTitle>
-            <ArrowDownCircle className="h-6 w-6 text-red-700" />
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold text-red-800">
-              ${data.totalExpense.toLocaleString("es-AR")}
-            </p>
-          </CardContent>
-        </Card>
+          {/* BALANCE */}
+          <Card 
+            className="relative overflow-hidden border-none shadow-sm cursor-pointer hover:shadow-md transition-shadow group sm:col-span-2 lg:col-span-1"
+            onClick={() => navigate("/transactions")}
+          >
+            <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500" />
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-slate-500 uppercase tracking-wider">Balance Total</CardTitle>
+              <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600 group-hover:scale-110 transition-transform">
+                <DollarSign className="h-5 w-5" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-slate-900">
+                ${data.balance.toLocaleString("es-AR")}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
-        <Card className="bg-blue-100 border-blue-300 cursor-pointer" onClick={()=> navigate("/transactions")}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Balance</CardTitle>
-            <DollarSign className="h-6 w-6 text-blue-700" />
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold text-blue-800">
-              ${data.balance.toLocaleString("es-AR")}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+        {/* SECCIÓN DE GRÁFICOS Y TABLAS */}
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
+          {/* Reportes Chart - Ocupa más espacio en desktop */}
+          <div className="xl:col-span-12">
+            <ReportsChart />
+          </div>
 
-      {/* CONTENIDO */}
-      <div className="grid gap-4 md:grid-cols-2">
-        <ActiveBudgetsCard />
-        <RecentTransactionsCard />
-      </div>
+          {/* Presupuestos y Transacciones lado a lado */}
+          <div className="xl:col-span-5">
+            <ActiveBudgetsCard />
+          </div>
+          <div className="xl:col-span-7">
+            <RecentTransactionsCard />
+          </div>
+        </div>
+      </main>
 
-      <div className="grid gap-4 md:grid-cols-2 mt-6">
-        <ReportsChart />
-      </div>
+      <CreateTransactionModal
+        open={showModal}
+        onClose={() => setShowModal(false)}
+        typeSelected={typeSelected}
+      />
     </div>
   );
 };

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import api from "../../lib/api";
-import axios from "axios";
+import { supabase } from "../../lib/supabase"; // Usamos Supabase
+import { useAuth } from "../../hooks/useAuth"; // Necesitamos el usuario
 import {
   Dialog,
   DialogContent,
@@ -28,31 +28,32 @@ interface Props {
 }
 
 interface Category {
-  id: number;
+  id: string; // UUID es string
   name: string;
   type: "INCOME" | "EXPENSE";
 }
 
 export const BudgetModal = ({ open, onClose, initialData }: Props) => {
+  const { user } = useAuth(); // Obtenemos usuario autenticado
   const isEdit = !!initialData;
   const [categories, setCategories] = useState<Category[]>([]);
-  const [categoryId, setCategoryId] = useState<number | null>(null);
+  const [categoryId, setCategoryId] = useState<string | null>(null); // UUID string
   const [limitAmount, setLimitAmount] = useState(0);
   const [period, setPeriod] = useState<BudgetPeriod>("MONTHLY");
   const [startDate, setStartDate] = useState<Date>(new Date());
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  // Cargar categorías (filtradas por el usuario automáticamente por RLS)
   const fetchCategories = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const res = await api.get(
-        "/api/categories",
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      setCategories(res.data);
+      const { data, error } = await supabase
+        .from("categories")
+        .select("*")
+        .eq("type", "EXPENSE"); // Generalmente se presupuestan gastos
+
+      if (error) throw error;
+      setCategories(data || []);
     } catch (err) {
       console.error("Error al obtener categorías:", err);
     }
@@ -65,10 +66,11 @@ export const BudgetModal = ({ open, onClose, initialData }: Props) => {
       fetchCategories();
 
       if (initialData) {
-        setCategoryId(initialData.categoryId);
+        setCategoryId(String(initialData.categoryId)); // Convertimos a string para evitar error de tipo
         setLimitAmount(initialData.limitAmount);
         setPeriod(initialData.period);
-        setStartDate(new Date(initialData.startDate));
+        // Manejo seguro de la fecha
+        setStartDate(initialData.startDate ? new Date(initialData.startDate) : new Date());
       } else {
         setCategoryId(null);
         setLimitAmount(0);
@@ -78,74 +80,60 @@ export const BudgetModal = ({ open, onClose, initialData }: Props) => {
     }
   }, [open, initialData]);
 
-  const createBudget = async () => {
-    const token = localStorage.getItem("token");
-    const payload = {
-      categoryId,
-      limitAmount,
-      period,
-      startDate: startDate.toISOString().split("T")[0],
-    };
-
-    await api.post(
-      "/api/budgets",
-      payload,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
-    );
-  };
-
-  const updateBudget = async () => {
-    const token = localStorage.getItem("token");
-    const payload = {
-      categoryId,
-      limitAmount,
-      period,
-      startDate: startDate.toISOString().split("T")[0],
-    };
-
-    await api.put(
-      `/api/budgets/${
-        initialData!.id
-      }`,
-      payload,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
-    );
-  };
-
   const handleSubmit = async () => {
-    if (
-      !categoryId ||
-      isNaN(limitAmount) ||
-      limitAmount <= 0 ||
-      !period ||
-      !startDate
-    )
+    if (!user || !categoryId || isNaN(limitAmount) || limitAmount <= 0 || !period || !startDate)
       return;
+
     setLoading(true);
     setErrorMessage(null);
 
+    // Mapeamos los datos para Supabase (snake_case)
+    const payload = {
+      user_id: user.id,
+      category_id: categoryId,
+      limit_amount: limitAmount,
+      period: period,
+      start_date: startDate.toISOString(),
+    };
+
     try {
       if (initialData) {
-        await updateBudget();
+        // ACTUALIZAR (UPDATE)
+        const { error } = await supabase
+          .from("budgets")
+          .update(payload)
+          .eq("id", initialData.id); // UUID del presupuesto
+
+        if (error) throw error;
       } else {
-        await createBudget();
+        // CREAR (INSERT)
+        const { error } = await supabase
+          .from("budgets")
+          .insert(payload);
+
+        if (error) throw error;
       }
 
+      // Disparar evento para recargar la lista de presupuestos
       window.dispatchEvent(new Event("budget-updated"));
       onClose();
     } catch (err: unknown) {
       console.error("❌ Error al guardar presupuesto:", err);
 
-      if (axios.isAxiosError(err) && err.response?.status === 400) {
-        setErrorMessage(
-          err.response.data.message || "No se pudo guardar el presupuesto."
-        );
+      // Manejo de errores comunes de base de datos
+      if (
+        typeof err === "object" &&
+        err !== null &&
+        ("message" in err || "code" in err)
+      ) {
+        const errorObj = err as { message?: string; code?: string };
+        if (errorObj.message?.includes("duplicate") || errorObj.code === "23505") {
+          setErrorMessage("Ya existe un presupuesto para esta categoría.");
+        } else {
+          setErrorMessage("No se pudo guardar. Intenta nuevamente.");
+        }
       } else {
-        setErrorMessage("Ocurrió un error inesperado.");
+        setErrorMessage("No se pudo guardar. Intenta nuevamente.");
       }
     } finally {
       setLoading(false);
@@ -173,15 +161,15 @@ export const BudgetModal = ({ open, onClose, initialData }: Props) => {
           <div className="flex flex-col gap-3">
             <Label>Categoría</Label>
             <Select
-              value={categoryId?.toString() || ""}
-              onValueChange={(val) => setCategoryId(Number(val))}
+              value={categoryId || ""}
+              onValueChange={(val) => setCategoryId(val)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Seleccionar categoría" />
               </SelectTrigger>
               <SelectContent>
                 {categories.map((cat) => (
-                  <SelectItem key={cat.id} value={cat.id.toString()}>
+                  <SelectItem key={cat.id} value={cat.id}>
                     {cat.name}
                   </SelectItem>
                 ))}
@@ -237,7 +225,7 @@ export const BudgetModal = ({ open, onClose, initialData }: Props) => {
               mode="single"
               selected={startDate}
               onSelect={(date) => date && setStartDate(date)}
-              disabled={(day) => day > new Date()}
+              // Permitimos fechas futuras o pasadas según la lógica que prefieras
               className="rounded-md border"
             />
           </div>

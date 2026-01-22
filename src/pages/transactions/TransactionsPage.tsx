@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import api from "../../lib/api";
+import { useEffect, useState, useCallback } from "react";
+import { supabase } from "../../lib/supabase"; // Importamos Supabase
 import {
   Card,
   CardHeader,
@@ -19,14 +19,17 @@ import {
 import { useNavigate } from "react-router-dom";
 import { CreateCategoryModal } from "../../components/CreateCategoryModal";
 
+// Actualizamos la interfaz para usar UUID (string)
 interface Transaction {
-  id: number;
+  id: string; 
   description: string;
   amount: number;
   date: string;
   type: "INCOME" | "EXPENSE";
-  categoryName: string;
-  categoryId: number;
+  categories?: {
+    name: string;
+  };
+  category_id: string;
 }
 
 export const TransactionsPage = () => {
@@ -40,48 +43,52 @@ export const TransactionsPage = () => {
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   const [showCreateCategoryModal, setShowCreateCategoryModal] = useState(false);
 
-  const fetchTransactions = async () => {
+  const fetchTransactions = useCallback(async () => {
     try {
-      const token = localStorage.getItem("token");
-      const response = await api.get(
-        "/api/transactions",
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      setTransactions(response.data.reverse());
+      setLoading(true);
+      // Traemos todas las transacciones ordenadas por fecha
+      const { data, error } = await supabase
+        .from("transactions")
+        .select("*, categories(name)")
+        .order("date", { ascending: false });
+
+      if (error) throw error;
+      setTransactions(data || []);
     } catch (error) {
       console.error("Error fetching transactions:", error);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchTransactions();
 
     const handleUpdate = () => fetchTransactions();
     window.addEventListener("transaction-created", handleUpdate);
-    return () =>
+    window.addEventListener("transaction-updated", handleUpdate);
+    
+    return () => {
       window.removeEventListener("transaction-created", handleUpdate);
-  }, []);
+      window.removeEventListener("transaction-updated", handleUpdate);
+    };
+  }, [fetchTransactions]);
 
   const handleDelete = async () => {
     if (!transactionToDelete) return;
     try {
-      const token = localStorage.getItem("token");
-      await api.delete(
-        `/api/transactions/${transactionToDelete.id}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      // Borrado directo en Supabase
+      const { error } = await supabase
+        .from("transactions")
+        .delete()
+        .eq("id", transactionToDelete.id);
+
+      if (error) throw error;
+
       setShowConfirmDelete(false);
       setTransactionToDelete(null);
+      
+      // Disparar evento para que otros componentes (como el Dashboard) se enteren
       window.dispatchEvent(new Event("transaction-updated"));
       fetchTransactions();
     } catch (error) {
@@ -113,47 +120,48 @@ export const TransactionsPage = () => {
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Historial completo</CardTitle>
-          <Button
-            variant="outline"
-            onClick={() => setShowCreateCategoryModal(true)}
-            className="mt-4"
-          >
-            Crear nueva categoría
-          </Button>
-          <Button
-            onClick={() => setShowCreateModal(true)}
-            className="cursor-pointer mt-2"
-          >
-            Agregar transacción
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowCreateCategoryModal(true)}
+              className="mt-4"
+            >
+              Crear nueva categoría
+            </Button>
+            <Button
+              onClick={() => setShowCreateModal(true)}
+              className="cursor-pointer mt-4"
+            >
+              Agregar transacción
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-2">
             {loading ? (
-              <p className="text-sm text-gray-500">Cargando...</p>
+              <p className="text-sm text-gray-400 animate-pulse">Cargando transacciones...</p>
             ) : transactions.length === 0 ? (
               <p className="text-sm text-gray-500">
                 No hay transacciones registradas.
               </p>
             ) : (
               transactions.map((tx) => {
-                const [year, month, day] = tx.date.split("-").map(Number);
-                const localDate = new Date(year, month - 1, day);
+                const localDate = new Date(tx.date);
                 return (
                   <div
                     key={tx.id}
-                    className="flex justify-between items-start text-sm border-b pb-1"
+                    className="flex justify-between items-start text-sm border-b pb-2 pt-1"
                   >
                     <div className="flex-1">
                       <p className="font-medium truncate max-w-[180px]">
                         {tx.description}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {tx.categoryName} -{" "}
-                        {localDate.toLocaleDateString("es-AR")}
+                        {tx.categories?.name || "Sin categoría"} -{" "}
+                        {localDate.toLocaleDateString("es-AR", { timeZone: 'UTC' })}
                       </p>
                     </div>
-                    <div className="flex flex-col items-end min-w-[80px]">
+                    <div className="flex flex-col items-end min-w-[100px]">
                       <p
                         className={`text-sm font-semibold text-right ${
                           tx.type === "INCOME"
@@ -162,25 +170,23 @@ export const TransactionsPage = () => {
                         }`}
                       >
                         {tx.type === "INCOME" ? "+" : "-"}$
-                        {tx.amount.toLocaleString("es-AR")}
+                        {Number(tx.amount).toLocaleString("es-AR")}
                       </p>
-                      <div className="flex gap-2 mt-1">
+                      <div className="flex gap-3 mt-1">
                         <button
                           onClick={() => setEditingTransaction(tx)}
-                          className="text-muted-foreground hover:text-black transition"
+                          className="text-muted-foreground hover:text-black transition p-1"
                         >
                           <Pencil className="w-4 h-4" />
                         </button>
                         <button
-                          className="text-muted-foreground hover:text-destructive transition"
+                          onClick={() => {
+                            setTransactionToDelete(tx);
+                            setShowConfirmDelete(true);
+                          }}
+                          className="text-muted-foreground hover:text-destructive transition p-1"
                         >
-                          <Trash
-                            className="w-4 h-4"
-                            onClick={() => {
-                              setTransactionToDelete(tx);
-                              setShowConfirmDelete(true);
-                            }}
-                          />
+                          <Trash className="w-4 h-4" />
                         </button>
                       </div>
                     </div>
@@ -192,10 +198,19 @@ export const TransactionsPage = () => {
         </CardContent>
       </Card>
 
+      {/* Modales */}
       {editingTransaction && (
         <EditTransactionModal
           open={!!editingTransaction}
-          transaction={editingTransaction}
+          transaction={{
+            id: editingTransaction.id,
+            description: editingTransaction.description,
+            amount: editingTransaction.amount,
+            date: editingTransaction.date,
+            type: editingTransaction.type,
+            categoryId: editingTransaction.category_id ? Number(editingTransaction.category_id) : null,
+            categoryName: editingTransaction.categories?.name,
+          }}
           onClose={() => setEditingTransaction(null)}
         />
       )}
@@ -207,16 +222,19 @@ export const TransactionsPage = () => {
           typeSelected="EXPENSE"
         />
       )}
+      
       {showCreateCategoryModal && (
         <CreateCategoryModal
           open={showCreateCategoryModal}
           onClose={() => setShowCreateCategoryModal(false)}
           onCreated={() => {
             setShowCreateCategoryModal(false);
+            fetchTransactions(); // Refrescar para ver nombres de categorías nuevas si aplica
           }}
         />
       )}
 
+      {/* Confirmación de Borrado */}
       {showConfirmDelete && transactionToDelete && (
         <Dialog open={showConfirmDelete} onOpenChange={setShowConfirmDelete}>
           <DialogContent>

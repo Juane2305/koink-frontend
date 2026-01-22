@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import api from "../lib/api";
+import { supabase } from "../lib/supabase"; // Importamos Supabase
+import { useAuth } from "../hooks/useAuth"; // Usamos nuestro hook de auth
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Button } from "../components/ui/button";
@@ -30,57 +31,89 @@ interface UserData {
 }
 
 export const ProfilePage = () => {
-  const [user, setUser] = useState<UserData | null>(null);
+  const { user: authUser } = useAuth(); // Obtenemos el usuario de la sesión
+  const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showAvatarModal, setShowAvatarModal] = useState(false);
 
   useEffect(() => {
-    const fetchUser = async () => {
+    const fetchProfile = async () => {
+      if (!authUser) return;
+
       try {
-        const token = localStorage.getItem("token");
-        const res = await api.get("/api/user/me", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setUser(res.data);
+        setLoading(true);
+        // Traemos los datos de la tabla 'profiles'
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", authUser.id)
+          .single();
+
+        if (error) throw error;
+
+        if (data) {
+          setUserData({
+            name: data.full_name || "",
+            email: data.email || "",
+            currency: data.currency || "ARS",
+            alertsByEmail: data.alerts_by_email || false,
+            avatar: data.avatar_url || "/avatars/default-avatar.png",
+          });
+        }
       } catch (err) {
         console.error("Error fetching user profile:", err);
       } finally {
         setLoading(false);
       }
     };
-    fetchUser();
-  }, []);
+
+    fetchProfile();
+  }, [authUser]);
 
   const handleSave = async () => {
-    if (!user) return;
+    if (!userData || !authUser) return;
     setSaving(true);
+    
     try {
-      const token = localStorage.getItem("token");
-      await api.put(
-        "/api/user/me",
-        {
-          name: user.name,
-          currency: user.currency,
-          alertsByEmail: user.alertsByEmail,
-          avatar: user.avatar,
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` },
+      // 1. Actualizar la tabla 'profiles'
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update({
+          full_name: userData.name,
+          currency: userData.currency,
+          alerts_by_email: userData.alertsByEmail,
+          avatar_url: userData.avatar,
+        })
+        .eq("id", authUser.id);
+
+      if (profileError) throw profileError;
+
+      // 2. Opcional: También actualizamos la metadata de la sesión 
+      // para que el nombre cambie en el Dashboard sin recargar
+      await supabase.auth.updateUser({
+        data: { 
+          full_name: userData.name,
+          avatar_url: userData.avatar 
         }
-      );
+      });
+
+      alert("¡Perfil actualizado con éxito!");
     } catch (err) {
       console.error("Error updating user profile:", err);
+      alert("Error al guardar los cambios.");
     } finally {
       setSaving(false);
     }
   };
 
   if (loading) {
-    return <p className="text-center mt-10 text-gray-500">Cargando perfil...</p>;
+    return <div className="flex h-screen items-center justify-center">
+      <p className="text-gray-500 animate-pulse">Cargando perfil...</p>
+    </div>;
   }
 
-  if (!user) {
+  if (!userData) {
     return <p className="text-center mt-10 text-red-500">Error al cargar el perfil</p>;
   }
 
@@ -88,34 +121,39 @@ export const ProfilePage = () => {
     <div className="max-w-xl mx-auto mt-10 p-4">
       <Card>
         <CardHeader className="flex flex-col items-center space-y-4">
-          <img
-            src={user.avatar || "/avatars/default-avatar.png"}
-            alt={user.name}
-            className="w-24 h-24 rounded-full border shadow cursor-pointer"
-            onClick={() => setShowAvatarModal(true)}
-          />
-          <CardTitle>Tu perfil</CardTitle>
+          <div className="relative group">
+            <img
+              src={userData.avatar}
+              alt={userData.name}
+              className="w-24 h-24 rounded-full border-4 border-white shadow-lg cursor-pointer transition hover:brightness-90"
+              onClick={() => setShowAvatarModal(true)}
+            />
+            <div className="absolute bottom-0 right-0 bg-primary text-white p-1 rounded-full text-xs">
+              ✎
+            </div>
+          </div>
+          <CardTitle className="text-2xl font-bold">{userData.name}</CardTitle>
         </CardHeader>
 
-        <CardContent className="space-y-4">
-          <div>
+        <CardContent className="space-y-6">
+          <div className="space-y-2">
             <Label>Nombre</Label>
             <Input
-              value={user.name}
-              onChange={(e) => setUser({ ...user, name: e.target.value })}
+              value={userData.name}
+              onChange={(e) => setUserData({ ...userData, name: e.target.value })}
             />
           </div>
 
-          <div>
-            <Label>Email</Label>
-            <Input value={user.email} disabled className="bg-gray-100" />
+          <div className="space-y-2">
+            <Label>Email (No se puede cambiar)</Label>
+            <Input value={userData.email} disabled className="bg-gray-50 text-gray-400" />
           </div>
 
-          <div>
-            <Label>Moneda</Label>
+          <div className="space-y-2">
+            <Label>Moneda de preferencia</Label>
             <Select
-              value={user.currency}
-              onValueChange={(value) => setUser({ ...user, currency: value })}
+              value={userData.currency}
+              onValueChange={(value) => setUserData({ ...userData, currency: value })}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Seleccionar moneda" />
@@ -128,40 +166,46 @@ export const ProfilePage = () => {
             </Select>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <div className="space-y-0.5">
+              <Label htmlFor="alerts">Alertas por correo</Label>
+              <p className="text-xs text-muted-foreground">Te avisaremos cuando superes un presupuesto.</p>
+            </div>
             <Switch
               id="alerts"
-              checked={user.alertsByEmail}
+              checked={userData.alertsByEmail}
               onCheckedChange={(checked) =>
-                setUser({ ...user, alertsByEmail: checked })
+                setUserData({ ...userData, alertsByEmail: checked })
               }
             />
-            <Label htmlFor="alerts">Recibir alertas por correo</Label>
           </div>
 
-          <Button onClick={handleSave} disabled={saving} className="w-full">
-            {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          <Button onClick={handleSave} disabled={saving} className="w-full h-12 text-lg">
+            {saving && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
             {saving ? "Guardando..." : "Guardar cambios"}
           </Button>
         </CardContent>
       </Card>
 
       <Dialog open={showAvatarModal} onOpenChange={setShowAvatarModal}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Elegí un nuevo avatar</DialogTitle>
+            <DialogTitle>Elegí tu avatar</DialogTitle>
           </DialogHeader>
           <SelectAvatar
-            value={user.avatar}
-            onChange={(url) => setUser({ ...user, avatar: url })}
+            value={userData.avatar}
+            onChange={(url) => setUserData({ ...userData, avatar: url })}
             onClose={() => setShowAvatarModal(false)}
           />
           <Button
-            variant="outline"
-            className="w-full mt-4"
-            onClick={() => setUser({ ...user, avatar: "/avatars/default-avatar.png" })}
+            variant="ghost"
+            className="w-full mt-2 text-red-500 hover:text-red-600 hover:bg-red-50"
+            onClick={() => {
+              setUserData({ ...userData, avatar: "/avatars/default-avatar.png" });
+              setShowAvatarModal(false);
+            }}
           >
-            Eliminar avatar y usar predeterminado
+            Quitar avatar actual
           </Button>
         </DialogContent>
       </Dialog>

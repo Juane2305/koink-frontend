@@ -24,7 +24,7 @@ export const BudgetsPage = () => {
         {loading ? (
           <p className="text-gray-500">Cargando...</p>
         ) : budgets.length === 0 ? (
-          <p className="text-gray-500">No tenés presupuestos registrados aún.</p>
+          <p className="text-gray-500 mt-10">No tenés presupuestos registrados aún.</p>
         ) : (
           <div className="grid gap-4 pb-20 pt-6">
             {budgets.map((budget) => (

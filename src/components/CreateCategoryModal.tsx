@@ -1,8 +1,8 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import api from "../lib/api";
-import axios from "axios";
+import { supabase } from "../lib/supabase"; // Usamos Supabase
+import { useAuth } from "../hooks/useAuth"; // Necesitamos el usuario
 import {
   Dialog,
   DialogContent,
@@ -42,6 +42,7 @@ interface Props {
 }
 
 export const CreateCategoryModal = ({ open, onClose, onCreated }: Props) => {
+  const { user } = useAuth(); // Obtenemos el usuario actual
   const [errorMsg, setErrorMsg] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -54,29 +55,42 @@ export const CreateCategoryModal = ({ open, onClose, onCreated }: Props) => {
   });
 
   const onSubmit = async (values: FormValues) => {
+    if (!user) return; // Seguridad extra
+
     setLoading(true);
+    setErrorMsg("");
+
     try {
-      const token = localStorage.getItem("token");
-      await api.post(
-        "/api/categories",
-        values,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      // Insertamos directo en Supabase
+      const { error } = await supabase.from("categories").insert({
+        name: values.name,
+        type: values.type,
+        user_id: user.id, // Vinculamos la categoría al usuario
+        icon: "Circle",   // Icono por defecto (puedes cambiarlo luego)
+        color: "#94a3b8"  // Color gris por defecto
+      });
+
+      if (error) throw error;
+
       form.reset();
-      setErrorMsg("");
-      onCreated?.();
+      onCreated?.(); // Avisamos que se creó para refrescar listas
       onClose();
     } catch (error: unknown) {
-      if (axios.isAxiosError(error)) {
-        if (error.response?.data?.message?.includes("already exists")) {
-          setErrorMsg("Ya existe una categoría con ese nombre");
+      console.error("Error al crear categoría:", error);
+      // Manejo básico de duplicados (Postgres devuelve código 23505 para unique_violation)
+      if (
+        typeof error === "object" &&
+        error !== null &&
+        ("code" in error || "message" in error)
+      ) {
+        const err = error as { code?: string; message?: string };
+        if (err.code === '23505' || err.message?.includes("duplicate")) {
+          setErrorMsg("Ya existe una categoría con ese nombre.");
         } else {
-          console.error("Error al crear categoría:", error);
-          setErrorMsg("Hubo un error inesperado. Intentá nuevamente.");
+          setErrorMsg("Hubo un error al guardar. Intentá nuevamente.");
         }
       } else {
-        console.error("Error desconocido:", error);
-        setErrorMsg("Ocurrió un error desconocido");
+        setErrorMsg("Hubo un error al guardar. Intentá nuevamente.");
       }
     } finally {
       setLoading(false);
@@ -128,7 +142,9 @@ export const CreateCategoryModal = ({ open, onClose, onCreated }: Props) => {
             />
 
             {errorMsg && (
-              <p className="text-sm text-red-500">{errorMsg}</p>
+              <p className="text-sm text-red-500 bg-red-50 p-2 rounded border border-red-200">
+                {errorMsg}
+              </p>
             )}
 
             <Button type="submit" className="w-full" disabled={loading}>

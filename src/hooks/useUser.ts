@@ -1,31 +1,16 @@
-import { useEffect, useState } from "react";
-import api from "../lib/api";
-
-interface User {
-  id: number;
-  name: string;
-  email: string;
-  avatar: string;
-}
+import { useAuth } from "./useAuth";
 
 export const useUser = () => {
-  const [user, setUser] = useState<User | null>(null);
+  const { user } = useAuth();
 
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        const response = await api.get("/api/user/me", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setUser(response.data);
-      } catch (error) {
-        console.error("Error fetching user:", error);
-      }
-    };
+  if (!user) return null;
 
-    fetchUser();
-  }, []);
-
-  return user;
+  return {
+    id: user.id,
+    email: user.email,
+    // Supabase guarda los datos extra en user_metadata
+    name: user.user_metadata?.full_name || "Usuario",
+    avatar: user.user_metadata?.avatar_url,
+    currency: user.user_metadata?.currency || "ARS",
+  };
 };

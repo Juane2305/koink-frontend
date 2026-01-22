@@ -1,37 +1,52 @@
-// src/hooks/useDashboardData.ts
-import { useEffect, useState } from "react"
-import api from "../lib/api"
-
-interface DashboardData {
-  totalIncome: number
-  totalExpense: number
-  balance: number
-}
+import { useEffect, useState, useCallback } from "react";
+import { supabase } from "../lib/supabase";
 
 export const useDashboardData = () => {
-  const [data, setData] = useState<DashboardData | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [data, setData] = useState({
+    totalIncome: 0,
+    totalExpense: 0,
+    balance: 0,
+  });
+  const [loading, setLoading] = useState(true);
 
-  // 🔹 Ahora está fuera del useEffect
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
-      const token = localStorage.getItem("token")
-      const response = await api.get("/api/dashboard", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-      setData(response.data)
+      setLoading(true);
+
+      // Pedimos todas las transacciones del usuario actual
+      // (Supabase filtra por usuario automáticamente gracias a las RLS policies que creamos)
+      const { data: transactions, error } = await supabase
+        .from("transactions")
+        .select("type, amount");
+
+      if (error) throw error;
+
+      // Calculamos los totales en el frontend
+      let income = 0;
+      let expense = 0;
+
+      transactions?.forEach((t) => {
+        const amount = Number(t.amount); // Aseguramos que sea número
+        if (t.type === "INCOME") income += amount;
+        if (t.type === "EXPENSE") expense += amount;
+      });
+
+      setData({
+        totalIncome: income,
+        totalExpense: expense,
+        balance: income - expense,
+      });
     } catch (error) {
-      console.error("Error al cargar dashboard:", error)
+      console.error("Error cargando dashboard:", error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
-    fetchData()
-  }, [])
+    fetchData();
+  }, [fetchData]);
 
-  return { data, loading, refetch: fetchData }
-}
+  // Retornamos refetch por si necesitas recargar los datos manualmente
+  return { data, loading, refetch: fetchData };
+};

@@ -1,8 +1,8 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import api from "../../lib/api";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "../../lib/supabase"; // Importamos el cliente de Supabase
 import {
   Form,
   FormControl,
@@ -14,7 +14,7 @@ import {
 import { Input } from "../../components/ui/input";
 import { Button } from "../../components/ui/button";
 import { useState } from "react";
-import { GoogleLoginButton } from "./GoogleLoginButton";
+// import { GoogleLoginButton } from "./GoogleLoginButton";
 import { Loader2 } from "lucide-react";
 
 const formSchema = z.object({
@@ -35,38 +35,41 @@ export function LoginForm() {
 
   const navigate = useNavigate();
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false); 
+  const [loading, setLoading] = useState(false);
 
   const onSubmit = async (values: FormValues) => {
     setLoading(true);
     setError("");
+    
     try {
-      const response = await api.post("/api/auth/login", values);
-  
-      const { token, name } = response.data;
-  
-      if (!token || !name) {
-        setError("Datos inválidos del servidor");
+      const { error } = await supabase.auth.signInWithPassword({
+        email: values.email,
+        password: values.password,
+      });
+
+      if (error) {
+        console.error("Error de login:", error.message);
+        setError("Usuario o contraseña incorrectos");
         return;
       }
-  
-      localStorage.setItem("token", token);
-      localStorage.setItem("user", JSON.stringify({ name }));
-  
       navigate("/dashboard");
+      
     } catch (err) {
-      console.error("Login error:", err);
-      setError("Usuario o contraseña incorrectos");
+      console.error("Error inesperado:", err);
+      setError("Ocurrió un error al intentar ingresar");
     } finally {
       setLoading(false);
     }
   };
-  
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        {error && <p className="text-red-500">{error}</p>}
+        {error && (
+          <div className="p-3 text-sm text-red-500 bg-red-50 rounded-md border border-red-200">
+            {error}
+          </div>
+        )}
 
         <FormField
           control={form.control}
@@ -101,7 +104,7 @@ export function LoginForm() {
           {loading ? "Ingresando..." : "Ingresar"}
         </Button>
 
-        <GoogleLoginButton />
+        {/* <GoogleLoginButton /> */}
       </form>
     </Form>
   );

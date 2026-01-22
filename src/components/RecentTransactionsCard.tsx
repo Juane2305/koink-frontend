@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import api from "../lib/api";
+import { useEffect, useState, useCallback } from "react";
+import { supabase } from "../lib/supabase"; // Importamos Supabase
 import {
   Card,
   CardContent,
@@ -7,44 +7,46 @@ import {
   CardTitle,
 } from "../components/ui/card";
 
-
 interface Transaction {
-  id: number;
+  id: string; // En Supabase los ID suelen ser UUID (strings)
   description: string;
   amount: number;
   date: string;
   type: "INCOME" | "EXPENSE";
-  categoryName: string;
-  categoryId: number;
+  categories?: {
+    name: string;
+  };
 }
 
 export const RecentTransactionsCard = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
 
-
-  const fetchTransactions = async () => {
+  const fetchTransactions = useCallback(async () => {
     try {
-      const token = localStorage.getItem("token");
-      const response = await api.get(
-        "/api/transactions",
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      setTransactions(response.data.reverse());
+      setLoading(true);
+      
+      // Consulta optimizada: Trae las últimas 10 transacciones + el nombre de la categoría
+      const { data, error } = await supabase
+        .from("transactions")
+        .select("*, categories(name)") // Hacemos "Join" con la tabla categorias
+        .order("date", { ascending: false }) // Ordenamos por fecha (más reciente primero)
+        .limit(10); // Solo traemos 10
+
+      if (error) throw error;
+
+      setTransactions(data || []);
     } catch (error) {
-      console.error("Error fetching recent transactions:", error);
+      console.error("Error cargando transacciones:", error);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchTransactions();
 
+    // Mantenemos tu lógica de escuchar eventos para actualizar la lista
     const handleUpdate = () => {
       fetchTransactions();
     };
@@ -53,7 +55,7 @@ export const RecentTransactionsCard = () => {
     return () => {
       window.removeEventListener("transaction-created", handleUpdate);
     };
-  }, []);
+  }, [fetchTransactions]);
 
   return (
     <Card>
@@ -63,15 +65,22 @@ export const RecentTransactionsCard = () => {
       <CardContent>
         <div className="space-y-3 max-h-64 overflow-y-auto pr-2">
           {loading ? (
-            <p className="text-sm text-gray-500">Cargando...</p>
+            <div className="space-y-3">
+               <p className="text-sm text-gray-400 animate-pulse">Cargando movimientos...</p>
+            </div>
           ) : transactions.length === 0 ? (
             <p className="text-sm text-gray-500">
               No hay transacciones recientes.
             </p>
           ) : (
-            transactions.slice(0,10).map((tx) => {
-              const [year, month, day] = tx.date.split("-").map(Number);
-              const localDate = new Date(year, month - 1, day);
+            transactions.map((tx) => {
+              // Parseo de fecha simple y seguro
+              const localDate = new Date(tx.date);
+              // Ajuste de zona horaria manual si es necesario, o usar UTC
+              // Para visualización simple:
+              const formattedDate = localDate.toLocaleDateString("es-AR", {
+                timeZone: "UTC" 
+              });
 
               return (
                 <div
@@ -81,8 +90,9 @@ export const RecentTransactionsCard = () => {
                   <div>
                     <p className="font-medium">{tx.description}</p>
                     <p className="text-xs text-muted-foreground">
-                      {tx.categoryName?.trim() || "Sin categoría"} -{" "}
-                      {localDate.toLocaleDateString("es-AR")}
+                      {/* Accedemos al nombre de la categoría a través de la relación */}
+                      {tx.categories?.name || "Sin categoría"} -{" "}
+                      {formattedDate}
                     </p>
                   </div>
                   <p
@@ -91,7 +101,7 @@ export const RecentTransactionsCard = () => {
                     }`}
                   >
                     {tx.type === "INCOME" ? "+" : "-"}$
-                    {tx.amount.toLocaleString("es-AR")}
+                    {Number(tx.amount).toLocaleString("es-AR")}
                   </p>
                 </div>
               );

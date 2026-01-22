@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import api from "../lib/api";
+import { supabase } from "../lib/supabase"; // Importamos Supabase
 import {
   Dialog,
   DialogContent,
@@ -22,18 +22,18 @@ import { Loader2 } from "lucide-react";
 export type TransactionType = "INCOME" | "EXPENSE";
 
 interface Category {
-  id: number;
+  id: string; // UUID es string
   name: string;
   type: TransactionType;
 }
 
 interface TransactionToEdit {
-  id: number;
+  id: string; // UUID es string
   description: string;
   amount: number;
   date: string;
   type: TransactionType;
-  categoryId: number | null;
+  category_id?: string; // Nombre de columna en Supabase
   categoryName?: string;
 }
 
@@ -51,73 +51,58 @@ export const EditTransactionModal = ({
   const [categories, setCategories] = useState<Category[]>([]);
   const [description, setDescription] = useState(transaction.description);
   const [amount, setAmount] = useState(transaction.amount);
-  const [selectedCategory, setSelectedCategory] = useState<Category | null>(
-    null
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
+    transaction.category_id || null
   );
   const [type, setType] = useState<TransactionType>(transaction.type);
   const [date, setDate] = useState<Date>(new Date(transaction.date));
-  const [showCategorySelect, setShowCategorySelect] = useState(
-    transaction.categoryId == null
-  );
-  const [categoryError, setCategoryError] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const token = localStorage.getItem("token");
-        const response = await api.get(
-          "/api/categories",
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-        setCategories(response.data);
-
-        const current = response.data.find(
-          (cat: Category) => cat.id === transaction.categoryId
-        );
-        if (current) setSelectedCategory(current);
+        const { data, error } = await supabase
+          .from("categories")
+          .select("*");
+        
+        if (error) throw error;
+        setCategories(data || []);
       } catch (error) {
         console.error("Error fetching categories:", error);
       }
     };
 
     if (open) fetchCategories();
-  }, [open, transaction.categoryId]);
+  }, [open]);
 
+  // Si cambia el tipo (Ingreso/Egreso), reseteamos la categoría seleccionada
   useEffect(() => {
-    if (selectedCategory && selectedCategory.type !== type) {
-      setSelectedCategory(null);
-      setShowCategorySelect(true);
+    const currentCategory = categories.find(c => c.id === selectedCategoryId);
+    if (currentCategory && currentCategory.type !== type) {
+      setSelectedCategoryId(null);
     }
-  }, [type]);
+  }, [type, categories, selectedCategoryId]);
 
   const handleSubmit = async () => {
+    if (!selectedCategoryId || amount <= 0 || description.trim() === "") return;
+    
     setLoading(true);
-    if (!selectedCategory) {
-      setCategoryError("Debes seleccionar una categoría.");
-      return;
-    }
 
     try {
-      const token = localStorage.getItem("token");
-      await api.put(
-        `/api/transactions/${transaction.id}`,
-        {
+      const { error } = await supabase
+        .from("transactions")
+        .update({
           description,
           amount,
-          categoryId: selectedCategory.id,
+          category_id: selectedCategoryId,
           type,
           date: date.toISOString(),
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+        })
+        .eq("id", transaction.id);
 
+      if (error) throw error;
+
+      // Avisar a la app que se actualizó una transacción
       window.dispatchEvent(new Event("transaction-updated"));
       onClose();
     } catch (error) {
@@ -128,7 +113,7 @@ export const EditTransactionModal = ({
   };
 
   const isFormValid =
-    description.trim() !== "" && amount > 0 && selectedCategory !== null && !!date;
+    description.trim() !== "" && amount > 0 && selectedCategoryId !== null && !!date;
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -137,8 +122,7 @@ export const EditTransactionModal = ({
           <DialogTitle>Editar transacción</DialogTitle>
         </DialogHeader>
         <p id="dialog-desc" className="sr-only">
-          Formulario para editar una transacción existente. Incluye tipo, monto,
-          fecha y categoría.
+          Formulario para editar una transacción existente.
         </p>
         <div className="space-y-4">
           <div className="space-y-1">
@@ -168,58 +152,36 @@ export const EditTransactionModal = ({
           <div className="space-y-1">
             <Label>Monto</Label>
             <Input
-              type="number"
-              value={amount}
-              onChange={(e) =>
-                setAmount(Math.max(0, parseFloat(e.target.value)))
-              }
+              type="text"
+              value={amount === 0 ? "" : amount.toLocaleString("es-AR")}
+              onChange={(e) => {
+                const raw = e.target.value.replace(/\./g, "");
+                const parsed = parseFloat(raw);
+                setAmount(isNaN(parsed) ? 0 : parsed);
+              }}
               placeholder="$0.00"
             />
           </div>
 
           <div className="space-y-1">
             <Label>Categoría</Label>
-            {!showCategorySelect && selectedCategory ? (
-              <div className="flex justify-between items-center p-2 border rounded-md bg-gray-50">
-                <span>{selectedCategory.name}</span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowCategorySelect(true)}
-                >
-                  Cambiar
-                </Button>
-              </div>
-            ) : (
-              <>
-                <Select
-                  value={selectedCategory?.id.toString() || ""}
-                  onValueChange={(val) => {
-                    const found = categories.find(
-                      (cat) => cat.id === Number(val)
-                    );
-                    setSelectedCategory(found || null);
-                    setCategoryError("");
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar categoría" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories
-                      .filter((cat) => cat.type === type)
-                      .map((cat) => (
-                        <SelectItem key={cat.id} value={cat.id.toString()}>
-                          {cat.name}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-                {categoryError && (
-                  <p className="text-sm text-red-500 mt-1">{categoryError}</p>
-                )}
-              </>
-            )}
+            <Select
+              value={selectedCategoryId || ""}
+              onValueChange={(val) => setSelectedCategoryId(val)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccionar categoría" />
+              </SelectTrigger>
+              <SelectContent>
+                {categories
+                  .filter((cat) => cat.type === type)
+                  .map((cat) => (
+                    <SelectItem key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-1">

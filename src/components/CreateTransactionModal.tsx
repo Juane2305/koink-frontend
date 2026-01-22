@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import api from "../lib/api"; 
+import { supabase } from "../lib/supabase"; // Importamos Supabase
+import { useAuth } from "../hooks/useAuth"; // Necesitamos el usuario actual
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -17,7 +18,7 @@ import { Loader2 } from "lucide-react";
 type TransactionType = "INCOME" | "EXPENSE";
 
 interface Category {
-  id: number;
+  id: string; // Cambio importante: Supabase usa UUIDs (strings), no números
   name: string;
   type: TransactionType;
 }
@@ -33,52 +34,55 @@ export const CreateTransactionModal = ({
   onClose,
   typeSelected,
 }: CreateTransactionModalProps) => {
+  const { user } = useAuth(); // Obtenemos el usuario para asignarle la transacción
   const [categories, setCategories] = useState<Category[]>([]);
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState(0);
-  const [categoryId, setCategoryId] = useState<number | null>(null);
+  const [categoryId, setCategoryId] = useState<string | null>(null); // ID ahora es string
   const [type, setType] = useState<TransactionType>(typeSelected);
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [loading, setLoading] = useState(false);
 
+  // Cargar categorías desde Supabase
   const fetchCategories = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const response = await api.get(
-        "/api/categories",
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      setCategories(response.data);
+      // Supabase aplicará las políticas de seguridad (RLS) automáticamente:
+      // Solo traerá las categorías del sistema (user_id null) y las de este usuario.
+      const { data, error } = await supabase
+        .from("categories")
+        .select("*");
+
+      if (error) throw error;
+      setCategories(data || []);
     } catch (error) {
-      console.error("Error fetching categories:", error);
+      console.error("Error cargando categorías:", error);
     }
   };
 
   const handleSubmit = async () => {
+    if (!categoryId || !date || amount <= 0 || !user) return;
+    
     setLoading(true);
-    if (!categoryId || !date || amount <= 0) return;
-    const formattedDate = date.toISOString().split("T")[0];
+    // Formato de fecha para PostgreSQL (ISO 8601 simple)
+    const formattedDate = date.toISOString();
 
     try {
-      const token = localStorage.getItem("token");
-      await api.post(
-        "/api/transactions",
-        {
-          description,
-          amount,
-          categoryId,
-          type,
-          date: formattedDate,
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      // Insertar directo en la tabla 'transactions'
+      const { error } = await supabase.from("transactions").insert({
+        user_id: user.id,     // Vinculamos la transacción al usuario actual
+        description: description,
+        amount: amount,
+        category_id: categoryId,
+        type: type,
+        date: formattedDate,
+      });
 
+      if (error) throw error;
+
+      // Avisar a la app que hay datos nuevos (para actualizar el Dashboard)
       window.dispatchEvent(new Event("transaction-created"));
 
+      // Limpiar formulario y cerrar
       onClose();
       setDescription("");
       setAmount(0);
@@ -86,7 +90,7 @@ export const CreateTransactionModal = ({
       setType("EXPENSE");
       setDate(new Date());
     } catch (error) {
-      console.error("Error creating transaction:", error);
+      console.error("Error creando transacción:", error);
     } finally {
       setLoading(false);
     }
@@ -114,7 +118,10 @@ export const CreateTransactionModal = ({
             <Label>Tipo</Label>
             <Select
               value={type}
-              onValueChange={(val) => setType(val as TransactionType)}
+              onValueChange={(val) => {
+                setType(val as TransactionType);
+                setCategoryId(null); // Resetear categoría al cambiar el tipo
+              }}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Seleccionar tipo" />
@@ -141,7 +148,8 @@ export const CreateTransactionModal = ({
               type="text"
               value={amount === 0 ? "" : amount.toLocaleString("es-AR")}
               onChange={(e) => {
-                const raw = e.target.value.replace(/\./g, "");
+                // Tu lógica original para formatear el input de dinero
+                const raw = e.target.value.replace(/\./g, ""); // Eliminar puntos de miles
                 const parsed = parseFloat(raw);
                 if (!isNaN(parsed)) {
                   setAmount(parsed);
@@ -156,8 +164,8 @@ export const CreateTransactionModal = ({
           <div className="space-y-1">
             <Label>Categoría</Label>
             <Select
-              value={categoryId?.toString()}
-              onValueChange={(val) => setCategoryId(Number(val))}
+              value={categoryId || ""}
+              onValueChange={(val) => setCategoryId(val)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Seleccionar categoría" />
@@ -166,7 +174,7 @@ export const CreateTransactionModal = ({
                 {categories
                   .filter((cat) => cat.type === type)
                   .map((cat) => (
-                    <SelectItem key={cat.id} value={cat.id.toString()}>
+                    <SelectItem key={cat.id} value={cat.id}>
                       {cat.name}
                     </SelectItem>
                   ))}
@@ -179,9 +187,7 @@ export const CreateTransactionModal = ({
               mode="single"
               selected={date}
               onSelect={(selectedDate) => {
-                if (selectedDate) {
-                  setDate(selectedDate);
-                }
+                if (selectedDate) setDate(selectedDate);
               }}
               disabled={(day) => day > new Date()}
               className="rounded-md border"

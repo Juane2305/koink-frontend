@@ -1,16 +1,25 @@
-import { ReactNode } from "react"
-import { Navigate } from "react-router-dom"
+import { ReactNode } from "react";
+import { Navigate } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth";
 
 interface ProtectedRouteProps {
-  children: ReactNode
+  children: ReactNode;
 }
 
 export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
-  const token = localStorage.getItem("token")
+  const { isAuthenticated, loading } = useAuth();
 
-  if (!token) {
-    return <Navigate to="/login" replace />
+  if (loading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <p className="text-muted-foreground animate-pulse">Cargando Koink...</p>
+      </div>
+    );
   }
 
-  return <>{children}</>
-}
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <>{children}</>;
+};
