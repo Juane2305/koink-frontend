@@ -4,9 +4,10 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { useNavigate } from "react-router-dom"
 import { supabase } from "../../lib/supabase"
-import { Loader2, Check } from "lucide-react"
+import { Loader2, Check, Mail, ArrowRight } from "lucide-react"
 import { Progress } from "../../components/ui/progress"
-
+import { Button } from "../../components/ui/button"
+// ... (mismos imports de UI)
 import {
   Form,
   FormControl,
@@ -16,7 +17,6 @@ import {
   FormMessage,
 } from "../../components/ui/form"
 import { Input } from "../../components/ui/input"
-import { Button } from "../../components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select"
 
 const formSchema = z.object({
@@ -40,6 +40,7 @@ const avatars = [
 export function RegisterForm() {
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
+  const [isSubmitted, setIsSubmitted] = useState(false) // <-- Nuevo estado
   const [error, setError] = useState("")
   const navigate = useNavigate()
 
@@ -54,7 +55,7 @@ export function RegisterForm() {
     setLoading(true)
     setError("")
     try {
-      const { data, error } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
         email: values.email,
         password: values.password,
         options: {
@@ -62,13 +63,22 @@ export function RegisterForm() {
             full_name: values.name,
             avatar_url: values.avatar,
             currency: values.currency
-          }
+          },
+          // URL a la que vuelve el usuario tras confirmar (ajusta según tu Vercel/Local)
+          emailRedirectTo: window.location.origin + '/login', 
         }
       })
       if (error) throw error
-      if (data.user) navigate("/login")
-    } catch (err: any) {
-      setError(err.message || "Ocurrió un error al crear la cuenta.")
+      
+      // En lugar de navegar, mostramos la pantalla de confirmación
+      setIsSubmitted(true)
+
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message || "Ocurrió un error al crear la cuenta.")
+      } else {
+        setError("Ocurrió un error al crear la cuenta.")
+      }
     } finally {
       setLoading(false)
     }
@@ -82,13 +92,48 @@ export function RegisterForm() {
     if (isStepValid) setStep(step + 1)
   }
 
+  // --- VISTA DE ÉXITO (POST-REGISTRO) ---
+  if (isSubmitted) {
+    return (
+      <div className="flex flex-col items-center text-center space-y-6 animate-in fade-in zoom-in duration-500">
+        <div className="w-20 h-20 bg-indigo-100 rounded-full flex items-center justify-center mb-2">
+          <Mail className="h-10 w-10 text-indigo-600 animate-bounce" />
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-2xl font-bold text-slate-900">¡Casi listo, {form.getValues("name").split(" ")[0]}!</h2>
+          <p className="text-muted-foreground">
+            Enviamos un enlace de confirmación a <br />
+            <span className="font-semibold text-slate-900">{form.getValues("email")}</span>
+          </p>
+        </div>
+        <div className="bg-slate-50 p-4 rounded-lg border border-slate-100 text-sm text-slate-600 text-left">
+          <p className="flex gap-2">
+            <span className="text-indigo-600 font-bold">1.</span> Revisá tu bandeja de entrada (o spam).
+          </p>
+          <p className="flex gap-2 mt-2">
+            <span className="text-indigo-600 font-bold">2.</span> Hacé clic en el enlace para activar tu cuenta.
+          </p>
+        </div>
+        <Button 
+          variant="outline" 
+          className="w-full h-11"
+          onClick={() => navigate("/login")}
+        >
+          Ir al inicio de sesión
+          <ArrowRight className="ml-2 h-4 w-4" />
+        </Button>
+      </div>
+    )
+  }
+
+  // --- VISTA DEL FORMULARIO (WIZARD) ---
   return (
     <div className="space-y-6">
       {/* Barra de Progreso */}
       <div className="space-y-2">
         <div className="flex justify-between text-xs font-medium text-muted-foreground uppercase tracking-wider">
             <span>Paso {step} de 5</span>
-            <span>{Math.round(progressValue)}% completado</span>
+            <span>{Math.round(progressValue)}%</span>
         </div>
         <Progress value={progressValue} className="h-1.5 bg-indigo-100" />
       </div>
