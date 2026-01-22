@@ -199,21 +199,23 @@ export const TransactionsPage = () => {
       </Card>
 
       {/* Modales */}
-      {editingTransaction && (
-        <EditTransactionModal
-          open={!!editingTransaction}
-          transaction={{
-            id: editingTransaction.id,
-            description: editingTransaction.description,
-            amount: editingTransaction.amount,
-            date: editingTransaction.date,
-            type: editingTransaction.type,
-            categoryId: editingTransaction.category_id ? Number(editingTransaction.category_id) : null,
-            categoryName: editingTransaction.categories?.name,
-          }}
-          onClose={() => setEditingTransaction(null)}
-        />
-      )}
+      {/* Modales */}
+{editingTransaction && (
+  <EditTransactionModal
+    open={!!editingTransaction}
+    transaction={{
+      id: editingTransaction.id,
+      description: editingTransaction.description,
+      amount: editingTransaction.amount,
+      date: editingTransaction.date,
+      type: editingTransaction.type,
+      // Cambiamos categoryId por category_id y quitamos el Number()
+      category_id: editingTransaction.category_id, 
+      categoryName: editingTransaction.categories?.name,
+    }}
+    onClose={() => setEditingTransaction(null)}
+  />
+)}
 
       {showCreateModal && (
         <CreateTransactionModal
