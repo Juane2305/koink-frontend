@@ -94,7 +94,8 @@ export const useBudgets = () => {
             period: b.period,
             startDate: start,
             endDate: end,
-            autoRenew: b.auto_renew || false, // <--- AGREGAR ESTA LÍNEA
+            autoRenew: b.auto_renew || false,
+            currency: b.currency || "ARS",
           };
         }),
       );

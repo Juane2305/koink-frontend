@@ -31,6 +31,7 @@ interface Transaction {
     name: string;
   };
   category_id: string;
+  currency: string;
 }
 
 export const TransactionsPage = () => {
@@ -226,6 +227,7 @@ export const TransactionsPage = () => {
             // Cambiamos categoryId por category_id y quitamos el Number()
             category_id: editingTransaction.category_id,
             categoryName: editingTransaction.categories?.name,
+            currency: editingTransaction.currency,
           }}
           onClose={() => setEditingTransaction(null)}
         />
