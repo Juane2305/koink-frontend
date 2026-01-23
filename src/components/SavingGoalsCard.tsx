@@ -1,4 +1,5 @@
 import { useGoals } from "../hooks/useGoals";
+import { useCurrency } from "../context/CurrencyContext"; // Import useCurrency
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Progress } from "./ui/progress";
 import { Target, TrendingUp } from "lucide-react";
@@ -8,6 +9,7 @@ interface Props {
 }
 
 export const SavingGoalsCard = ({ balance }: Props) => {
+  const { currency } = useCurrency(); // Get active currency
   const { goals, loading } = useGoals();
 
   if (loading) {
@@ -36,7 +38,8 @@ export const SavingGoalsCard = ({ balance }: Props) => {
           Metas de Ahorro
         </CardTitle>
         <div className="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full font-medium">
-          DISPONIBLE: ${balance.toLocaleString("es-AR")}
+          DISPONIBLE: {currency === "USD" ? "U$S" : "$"}
+          {balance.toLocaleString("es-AR")}
         </div>
       </CardHeader>
       <CardContent>
@@ -71,11 +74,13 @@ export const SavingGoalsCard = ({ balance }: Props) => {
                       </p>
                       <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500">
                         <span className="text-indigo-600">
-                          ${goal.current_amount.toLocaleString("es-AR")}
+                          {currency === "USD" ? "U$S" : "$"}
+                          {goal.current_amount.toLocaleString("es-AR")}
                         </span>
                         <span className="text-slate-300">/</span>
                         <span>
-                          ${goal.target_amount.toLocaleString("es-AR")}
+                          {currency === "USD" ? "U$S" : "$"}
+                          {goal.target_amount.toLocaleString("es-AR")}
                         </span>
                       </div>
                     </div>
@@ -102,7 +107,7 @@ export const SavingGoalsCard = ({ balance }: Props) => {
                         </span>
                       ) : goal.deadline ? (
                         <span className="text-indigo-600 font-medium">
-                          Rec: $
+                          Rec: {currency === "USD" ? "U$S" : "$"}
                           {(() => {
                             const months = Math.max(
                               1,
@@ -117,7 +122,7 @@ export const SavingGoalsCard = ({ balance }: Props) => {
                           /mes
                         </span>
                       ) : (
-                        `Faltan $${remaining.toLocaleString("es-AR")}`
+                        `Faltan ${currency === "USD" ? "U$S" : "$"}${remaining.toLocaleString("es-AR")}`
                       )}
                     </span>
                     {goal.deadline && percentage < 100 && (

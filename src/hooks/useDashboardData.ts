@@ -1,7 +1,9 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "../lib/supabase";
+import { useCurrency } from "../context/CurrencyContext";
 
 export const useDashboardData = () => {
+  const { currency } = useCurrency();
   const [data, setData] = useState({
     totalIncome: 0,
     totalExpense: 0,
@@ -15,11 +17,11 @@ export const useDashboardData = () => {
     try {
       setLoading(true);
 
-      // Pedimos todas las transacciones del usuario actual
-      // (Supabase filtra por usuario automáticamente gracias a las RLS policies que creamos)
+      // Pedimos todas las transacciones del usuario actual filtradas por moneda
       const { data: transactions, error } = await supabase
         .from("transactions")
-        .select("type, amount");
+        .select("type, amount")
+        .eq("currency", currency);
 
       if (error) throw error;
 
@@ -33,10 +35,11 @@ export const useDashboardData = () => {
         if (t.type === "EXPENSE") expense += amount;
       });
 
-      // 2. Pedimos el acumulado de las metas
+      // 2. Pedimos el acumulado de las metas (filtrando por moneda)
       const { data: goals, error: goalsError } = await supabase
         .from("goals")
-        .select("current_amount");
+        .select("current_amount")
+        .eq("currency", currency);
 
       if (goalsError) throw goalsError;
 
@@ -55,7 +58,7 @@ export const useDashboardData = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [currency]);
 
   useEffect(() => {
     fetchData();

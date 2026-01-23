@@ -26,7 +26,7 @@ import {
   SelectContent,
   SelectItem,
 } from "../components/ui/select";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const formSchema = z.object({
   name: z.string().min(2, { message: "El nombre es obligatorio" }),
@@ -39,9 +39,15 @@ interface Props {
   open: boolean;
   onClose: () => void;
   onCreated?: () => void;
+  defaultType?: "INCOME" | "EXPENSE";
 }
 
-export const CreateCategoryModal = ({ open, onClose, onCreated }: Props) => {
+export const CreateCategoryModal = ({
+  open,
+  onClose,
+  onCreated,
+  defaultType = "EXPENSE",
+}: Props) => {
   const { user } = useAuth(); // Obtenemos el usuario actual
   const [errorMsg, setErrorMsg] = useState("");
   const [loading, setLoading] = useState(false);
@@ -50,9 +56,19 @@ export const CreateCategoryModal = ({ open, onClose, onCreated }: Props) => {
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
-      type: "EXPENSE",
+      type: defaultType,
     },
   });
+
+  useEffect(() => {
+    if (open) {
+      form.reset({
+        name: "",
+        type: defaultType,
+      });
+      setErrorMsg("");
+    }
+  }, [open, defaultType, form]);
 
   const onSubmit = async (values: FormValues) => {
     if (!user) return; // Seguridad extra
@@ -66,8 +82,8 @@ export const CreateCategoryModal = ({ open, onClose, onCreated }: Props) => {
         name: values.name,
         type: values.type,
         user_id: user.id, // Vinculamos la categoría al usuario
-        icon: "Circle",   // Icono por defecto (puedes cambiarlo luego)
-        color: "#94a3b8"  // Color gris por defecto
+        icon: "Circle", // Icono por defecto (puedes cambiarlo luego)
+        color: "#94a3b8", // Color gris por defecto
       });
 
       if (error) throw error;
@@ -84,7 +100,7 @@ export const CreateCategoryModal = ({ open, onClose, onCreated }: Props) => {
         ("code" in error || "message" in error)
       ) {
         const err = error as { code?: string; message?: string };
-        if (err.code === '23505' || err.message?.includes("duplicate")) {
+        if (err.code === "23505" || err.message?.includes("duplicate")) {
           setErrorMsg("Ya existe una categoría con ese nombre.");
         } else {
           setErrorMsg("Hubo un error al guardar. Intentá nuevamente.");
@@ -125,7 +141,10 @@ export const CreateCategoryModal = ({ open, onClose, onCreated }: Props) => {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Tipo</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Seleccioná tipo" />

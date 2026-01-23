@@ -14,6 +14,8 @@ import {
 } from "./ui/select";
 import { Calendar } from "./ui/calendar";
 import { Loader2 } from "lucide-react";
+import { CreateCategoryModal } from "./CreateCategoryModal";
+import { useCurrency } from "../context/CurrencyContext";
 
 type TransactionType = "INCOME" | "EXPENSE";
 
@@ -35,6 +37,7 @@ export const CreateTransactionModal = ({
   typeSelected,
 }: CreateTransactionModalProps) => {
   const { user } = useAuth(); // Obtenemos el usuario para asignarle la transacción
+  const { currency } = useCurrency();
   const [categories, setCategories] = useState<Category[]>([]);
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState(0);
@@ -42,15 +45,14 @@ export const CreateTransactionModal = ({
   const [type, setType] = useState<TransactionType>(typeSelected);
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [loading, setLoading] = useState(false);
+  const [showCreateCategory, setShowCreateCategory] = useState(false);
 
   // Cargar categorías desde Supabase
   const fetchCategories = async () => {
     try {
       // Supabase aplicará las políticas de seguridad (RLS) automáticamente:
       // Solo traerá las categorías del sistema (user_id null) y las de este usuario.
-      const { data, error } = await supabase
-        .from("categories")
-        .select("*");
+      const { data, error } = await supabase.from("categories").select("*");
 
       if (error) throw error;
       setCategories(data || []);
@@ -61,7 +63,7 @@ export const CreateTransactionModal = ({
 
   const handleSubmit = async () => {
     if (!categoryId || !date || amount <= 0 || !user) return;
-    
+
     setLoading(true);
     // Formato de fecha para PostgreSQL (ISO 8601 simple)
     const formattedDate = date.toISOString();
@@ -69,12 +71,13 @@ export const CreateTransactionModal = ({
     try {
       // Insertar directo en la tabla 'transactions'
       const { error } = await supabase.from("transactions").insert({
-        user_id: user.id,     // Vinculamos la transacción al usuario actual
+        user_id: user.id, // Vinculamos la transacción al usuario actual
         description: description,
         amount: amount,
         category_id: categoryId,
         type: type,
         date: formattedDate,
+        currency: currency,
       });
 
       if (error) throw error;
@@ -165,12 +168,24 @@ export const CreateTransactionModal = ({
             <Label>Categoría</Label>
             <Select
               value={categoryId || ""}
-              onValueChange={(val) => setCategoryId(val)}
+              onValueChange={(val) => {
+                if (val === "new-category") {
+                  setShowCreateCategory(true);
+                } else {
+                  setCategoryId(val);
+                }
+              }}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Seleccionar categoría" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem
+                  value="new-category"
+                  className="text-indigo-600 font-medium focus:text-indigo-700 bg-indigo-50 focus:bg-indigo-100 cursor-pointer"
+                >
+                  + Nueva categoría
+                </SelectItem>
                 {categories
                   .filter((cat) => cat.type === type)
                   .map((cat) => (
@@ -204,6 +219,17 @@ export const CreateTransactionModal = ({
           </Button>
         </div>
       </DialogContent>
+      {showCreateCategory && (
+        <CreateCategoryModal
+          open={showCreateCategory}
+          onClose={() => setShowCreateCategory(false)}
+          defaultType={type}
+          onCreated={() => {
+            fetchCategories();
+            setShowCreateCategory(false);
+          }}
+        />
+      )}
     </Dialog>
   );
 };

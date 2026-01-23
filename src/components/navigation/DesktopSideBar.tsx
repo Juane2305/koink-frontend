@@ -6,6 +6,7 @@ import {
   User,
   PiggyBank,
   Target,
+  Calendar,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 
@@ -14,6 +15,7 @@ const navItems = [
   { href: "/transactions", icon: BarChart2, label: "Movimientos" },
   { href: "/budgets", icon: LayoutGrid, label: "Presupuestos" },
   { href: "/goals", icon: Target, label: "Metas" },
+  { href: "/pending", icon: Calendar, label: "Pendientes" },
   { href: "/profile", icon: User, label: "Perfil" },
 ];
 

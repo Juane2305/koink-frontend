@@ -22,7 +22,10 @@ import { TransferFundsModal } from "./goals/TransferFundsModal";
 import { Goal } from "../types/goals";
 import { supabase } from "../lib/supabase";
 
+import { useCurrency } from "../context/CurrencyContext"; // Import useCurrency
+
 export const GoalsPage = () => {
+  const { currency } = useCurrency(); // Get active currency
   const [showModal, setShowModal] = useState(false);
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
   const [transferGoal, setTransferGoal] = useState<Goal | null>(null);
@@ -81,7 +84,8 @@ export const GoalsPage = () => {
                 Balance Total
               </p>
               <h3 className="text-2xl font-bold mt-1 text-slate-900">
-                ${totalBalance.toLocaleString("es-AR")}
+                {currency === "USD" ? "U$S" : "$"}
+                {totalBalance.toLocaleString("es-AR")}
               </h3>
             </CardContent>
           </Card>
@@ -91,7 +95,8 @@ export const GoalsPage = () => {
                 Disponible para Gastar
               </p>
               <h3 className="text-2xl font-bold mt-1">
-                ${availableBalance.toLocaleString("es-AR")}
+                {currency === "USD" ? "U$S" : "$"}
+                {availableBalance.toLocaleString("es-AR")}
               </h3>
             </CardContent>
           </Card>
@@ -101,7 +106,8 @@ export const GoalsPage = () => {
                 Total Ahorrado en Metas
               </p>
               <h3 className="text-2xl font-bold mt-1">
-                ${totalReserved.toLocaleString("es-AR")}
+                {currency === "USD" ? "U$S" : "$"}
+                {totalReserved.toLocaleString("es-AR")}
               </h3>
             </CardContent>
           </Card>
@@ -193,10 +199,12 @@ export const GoalsPage = () => {
                         Ahorrado
                       </p>
                       <h4 className="text-2xl font-bold text-slate-900 leading-none">
-                        ${goal.current_amount.toLocaleString("es-AR")}
+                        {currency === "USD" ? "U$S" : "$"}
+                        {goal.current_amount.toLocaleString("es-AR")}
                       </h4>
                       <p className="text-[11px] text-slate-400">
-                        de ${goal.target_amount.toLocaleString("es-AR")}
+                        de {currency === "USD" ? "U$S" : "$"}
+                        {goal.target_amount.toLocaleString("es-AR")}
                       </p>
                     </div>
                     <Button
@@ -227,7 +235,7 @@ export const GoalsPage = () => {
                         {percentage.toFixed(1)}% completado
                       </span>
                       <span className="text-slate-500">
-                        Restan $
+                        Restan {currency === "USD" ? "U$S" : "$"}
                         {Math.max(
                           0,
                           goal.target_amount - goal.current_amount,
@@ -244,7 +252,7 @@ export const GoalsPage = () => {
                           Te recomendamos ahorrar
                         </p>
                         <p className="text-sm font-bold text-indigo-600">
-                          $
+                          {currency === "USD" ? "U$S" : "$"}
                           {(() => {
                             const remaining =
                               goal.target_amount - goal.current_amount;

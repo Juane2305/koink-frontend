@@ -25,9 +25,101 @@ import { Button } from "../components/ui/button";
 import { LogoutButton } from "../components/LogoutButton";
 import { ReportsChart } from "../components/ReportsChart";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "../lib/supabase";
+import { parseISO, isToday, isBefore, addDays } from "date-fns";
+import { Calendar, AlertCircle, ArrowRight } from "lucide-react";
+
+const PendingAlerts = ({ currency }: { currency: string }) => {
+  const [urgentPayments, setUrgentPayments] = useState<
+    {
+      id: string;
+      description: string;
+      due_date: string;
+      type: "URGENT" | "UPCOMING";
+    }[]
+  >([]);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchUrgent = async () => {
+      const { data } = await supabase
+        .from("scheduled_payments")
+        .select("id, description, due_date")
+        .eq("currency", currency) // Filter by currency
+        .order("due_date", { ascending: true });
+
+      if (data) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const threeDaysFromNow = addDays(today, 3);
+
+        const filtered = data
+          .map((p) => {
+            const dueDate = parseISO(p.due_date);
+            if (isToday(dueDate) || isBefore(dueDate, today)) {
+              return { ...p, type: "URGENT" as const };
+            }
+            if (isBefore(dueDate, threeDaysFromNow)) {
+              return { ...p, type: "UPCOMING" as const };
+            }
+            return null;
+          })
+          .filter((p): p is NonNullable<typeof p> => p !== null);
+
+        setUrgentPayments(filtered);
+      }
+    };
+
+    fetchUrgent();
+  }, [currency]); // Add currency dependency
+
+  if (urgentPayments.length === 0) return null;
+
+  const urgentCount = urgentPayments.filter((p) => p.type === "URGENT").length;
+
+  return (
+    <div
+      onClick={() => navigate("/pending")}
+      className={`mb-8 p-4 rounded-xl border flex items-center justify-between cursor-pointer transition-all hover:shadow-md ${
+        urgentCount > 0
+          ? "bg-red-50 border-red-100 text-red-900"
+          : "bg-amber-50 border-amber-100 text-amber-900"
+      }`}
+    >
+      <div className="flex items-center gap-3">
+        <div
+          className={`p-2 rounded-lg ${urgentCount > 0 ? "bg-red-100 text-red-600" : "bg-amber-100 text-amber-600"}`}
+        >
+          {urgentCount > 0 ? (
+            <AlertCircle className="w-5 h-5" />
+          ) : (
+            <Calendar className="w-5 h-5" />
+          )}
+        </div>
+        <div>
+          <p className="font-bold text-sm">
+            {urgentCount > 0
+              ? `Tenés ${urgentPayments.length} pago${urgentPayments.length > 1 ? "s" : ""} pendiente${urgentPayments.length > 1 ? "s" : ""}`
+              : "Tenés pagos por vencer pronto"}
+          </p>
+          <p className="text-xs opacity-80">
+            {urgentCount > 0
+              ? "Algunos pagos ya vencieron o vencen hoy. ¡No los olvides!"
+              : "Revisá tus pagos próximos para mantenerte al día."}
+          </p>
+        </div>
+      </div>
+      <ArrowRight className="w-5 h-5 opacity-50" />
+    </div>
+  );
+};
+
+import { CurrencyTabs } from "../components/dashboard/CurrencyTabs";
+import { useCurrency } from "../context/CurrencyContext";
 
 export const DashboardPage = () => {
   const { data, loading, refetch } = useDashboardData();
+  const { currency, setCurrency } = useCurrency(); // Hook para obtener y setear la moneda
   const [showModal, setShowModal] = useState(false);
   const [typeSelected, setTypeSelected] = useState<"INCOME" | "EXPENSE">(
     "INCOME",
@@ -38,8 +130,11 @@ export const DashboardPage = () => {
   useEffect(() => {
     const handleUpdate = () => refetch();
     window.addEventListener("transaction-created", handleUpdate);
-    return () =>
+    window.addEventListener("transaction-updated", handleUpdate);
+    return () => {
       window.removeEventListener("transaction-created", handleUpdate);
+      window.removeEventListener("transaction-updated", handleUpdate);
+    };
   }, [refetch]);
 
   if (loading) {
@@ -111,6 +206,12 @@ export const DashboardPage = () => {
           </Button>
         </div>
 
+        {/* SELECTOR DE MONEDA (TABS) */}
+        <CurrencyTabs currency={currency} onChange={setCurrency} />
+
+        {/* ALERTAS DE PAGOS PENDIENTES */}
+        <PendingAlerts currency={currency} />
+
         {/* TARJETAS DE RESUMEN */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {/* INGRESOS */}
@@ -132,7 +233,8 @@ export const DashboardPage = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-slate-900">
-                ${data.totalIncome.toLocaleString("es-AR")}
+                {currency === "USD" ? "U$S" : "$"}
+                {data.totalIncome.toLocaleString("es-AR")}
               </div>
             </CardContent>
           </Card>
@@ -156,7 +258,8 @@ export const DashboardPage = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-slate-900">
-                ${data.totalExpense.toLocaleString("es-AR")}
+                {currency === "USD" ? "U$S" : "$"}
+                {data.totalExpense.toLocaleString("es-AR")}
               </div>
             </CardContent>
           </Card>
@@ -177,7 +280,8 @@ export const DashboardPage = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-slate-900">
-                ${data.balance.toLocaleString("es-AR")}
+                {currency === "USD" ? "U$S" : "$"}
+                {data.balance.toLocaleString("es-AR")}
               </div>
             </CardContent>
           </Card>
@@ -198,7 +302,8 @@ export const DashboardPage = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                ${data.availableBalance.toLocaleString("es-AR")}
+                {currency === "USD" ? "U$S" : "$"}
+                {data.availableBalance.toLocaleString("es-AR")}
               </div>
               <p className="text-[10px] text-indigo-100 mt-1">
                 Limpio de ahorros en metas

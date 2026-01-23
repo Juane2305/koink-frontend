@@ -18,6 +18,7 @@ import {
 } from "../components/ui/select";
 import { Calendar } from "../components/ui/calendar";
 import { Loader2 } from "lucide-react";
+import { CreateCategoryModal } from "./CreateCategoryModal";
 
 export type TransactionType = "INCOME" | "EXPENSE";
 
@@ -35,6 +36,7 @@ interface TransactionToEdit {
   type: TransactionType;
   category_id?: string; // Nombre de columna en Supabase
   categoryName?: string;
+  currency: string;
 }
 
 interface EditTransactionModalProps {
@@ -52,19 +54,19 @@ export const EditTransactionModal = ({
   const [description, setDescription] = useState(transaction.description);
   const [amount, setAmount] = useState(transaction.amount);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
-    transaction.category_id || null
+    transaction.category_id || null,
   );
   const [type, setType] = useState<TransactionType>(transaction.type);
   const [date, setDate] = useState<Date>(new Date(transaction.date));
+  const [currency, setCurrency] = useState(transaction.currency || "ARS");
   const [loading, setLoading] = useState(false);
+  const [showCreateCategory, setShowCreateCategory] = useState(false);
 
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const { data, error } = await supabase
-          .from("categories")
-          .select("*");
-        
+        const { data, error } = await supabase.from("categories").select("*");
+
         if (error) throw error;
         setCategories(data || []);
       } catch (error) {
@@ -73,11 +75,11 @@ export const EditTransactionModal = ({
     };
 
     if (open) fetchCategories();
-  }, [open]);
+  }, [open, showCreateCategory]);
 
   // Si cambia el tipo (Ingreso/Egreso), reseteamos la categoría seleccionada
   useEffect(() => {
-    const currentCategory = categories.find(c => c.id === selectedCategoryId);
+    const currentCategory = categories.find((c) => c.id === selectedCategoryId);
     if (currentCategory && currentCategory.type !== type) {
       setSelectedCategoryId(null);
     }
@@ -85,7 +87,7 @@ export const EditTransactionModal = ({
 
   const handleSubmit = async () => {
     if (!selectedCategoryId || amount <= 0 || description.trim() === "") return;
-    
+
     setLoading(true);
 
     try {
@@ -97,6 +99,7 @@ export const EditTransactionModal = ({
           category_id: selectedCategoryId,
           type,
           date: date.toISOString(),
+          currency,
         })
         .eq("id", transaction.id);
 
@@ -113,7 +116,10 @@ export const EditTransactionModal = ({
   };
 
   const isFormValid =
-    description.trim() !== "" && amount > 0 && selectedCategoryId !== null && !!date;
+    description.trim() !== "" &&
+    amount > 0 &&
+    selectedCategoryId !== null &&
+    !!date;
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -142,6 +148,19 @@ export const EditTransactionModal = ({
           </div>
 
           <div className="space-y-1">
+            <Label>Moneda</Label>
+            <Select value={currency} onValueChange={setCurrency}>
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccionar moneda" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ARS">🇦🇷 Pesos (ARS)</SelectItem>
+                <SelectItem value="USD">🇺🇸 Dólares (USD)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1">
             <Label>Descripción</Label>
             <Input
               value={description}
@@ -159,7 +178,7 @@ export const EditTransactionModal = ({
                 const parsed = parseFloat(raw);
                 setAmount(isNaN(parsed) ? 0 : parsed);
               }}
-              placeholder="$0.00"
+              placeholder={currency === "USD" ? "U$S 0.00" : "$ 0.00"}
             />
           </div>
 
@@ -167,12 +186,24 @@ export const EditTransactionModal = ({
             <Label>Categoría</Label>
             <Select
               value={selectedCategoryId || ""}
-              onValueChange={(val) => setSelectedCategoryId(val)}
+              onValueChange={(val) => {
+                if (val === "new-category") {
+                  setShowCreateCategory(true);
+                } else {
+                  setSelectedCategoryId(val);
+                }
+              }}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Seleccionar categoría" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem
+                  value="new-category"
+                  className="text-indigo-600 font-medium focus:text-indigo-700 bg-indigo-50 focus:bg-indigo-100 cursor-pointer"
+                >
+                  + Nueva categoría
+                </SelectItem>
                 {categories
                   .filter((cat) => cat.type === type)
                   .map((cat) => (
@@ -207,6 +238,22 @@ export const EditTransactionModal = ({
           </div>
         </div>
       </DialogContent>
+      {showCreateCategory && (
+        <CreateCategoryModal
+          open={showCreateCategory}
+          onClose={() => setShowCreateCategory(false)}
+          defaultType={type}
+          onCreated={() => {
+            // Trigger refresh via effect dep or direct call?
+            // Since we added showCreateCategory to effect dep, just closing/changing state might trigger?
+            // Wait, showCreateCategory changes from true -> false.
+            // Ideally we re-fetch.
+            // But we can just use the same logic as CreateTransactionModal: manual fetch?
+            // Actually I added showCreateCategory to useEffect deps in chunk 3.
+            setShowCreateCategory(false);
+          }}
+        />
+      )}
     </Dialog>
   );
 };

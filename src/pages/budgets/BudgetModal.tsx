@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../hooks/useAuth";
+import { useCurrency } from "../../context/CurrencyContext"; // Import useCurrency
 import {
   Dialog,
   DialogContent,
@@ -21,6 +22,7 @@ import { Switch } from "../../components/ui/switch"; // Importamos el Switch
 import { Calendar } from "../../components/ui/calendar";
 import { Loader2, AlertCircle } from "lucide-react";
 import { BudgetPeriod, Budget } from "./types";
+import { CreateCategoryModal } from "../../components/CreateCategoryModal";
 
 interface Props {
   open: boolean;
@@ -36,18 +38,21 @@ interface Category {
 
 export const BudgetModal = ({ open, onClose, initialData }: Props) => {
   const { user } = useAuth();
+  const { currency: globalCurrency } = useCurrency(); // Get global currency
   const isEdit = !!initialData;
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [limitAmount, setLimitAmount] = useState(0);
   const [period, setPeriod] = useState<BudgetPeriod>("MONTHLY");
   const [startDate, setStartDate] = useState<Date>(new Date());
+  const [currency, setCurrency] = useState("ARS"); // New currency state
 
   // Nuevo estado para la auto-renovación
   const [autoRenew, setAutoRenew] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [showCreateCategory, setShowCreateCategory] = useState(false);
 
   const fetchCategories = async () => {
     try {
@@ -83,15 +88,17 @@ export const BudgetModal = ({ open, onClose, initialData }: Props) => {
           initialData.startDate ? new Date(initialData.startDate) : new Date(),
         );
         setAutoRenew(initialData.autoRenew || false);
+        setCurrency(initialData.currency || "ARS");
       } else {
         setCategoryId(null);
         setLimitAmount(0);
         setPeriod("MONTHLY");
         setStartDate(new Date());
         setAutoRenew(false);
+        setCurrency(globalCurrency); // Default to global currency
       }
     }
-  }, [open, initialData, categories.length]);
+  }, [open, initialData, categories.length, globalCurrency]);
 
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -116,7 +123,8 @@ export const BudgetModal = ({ open, onClose, initialData }: Props) => {
       limit_amount: limitAmount,
       period: period,
       start_date: startDate.toISOString(),
-      auto_renew: autoRenew, // Enviamos el nuevo campo
+      auto_renew: autoRenew,
+      currency: currency, // Add currency to payload
     };
 
     try {
@@ -161,16 +169,41 @@ export const BudgetModal = ({ open, onClose, initialData }: Props) => {
 
         <form onSubmit={handleSubmit} className="space-y-6 pt-2">
           <div className="space-y-2">
+            <Label className="text-sm font-semibold">Moneda</Label>
+            <Select value={currency} onValueChange={setCurrency}>
+              <SelectTrigger className="h-11">
+                <SelectValue placeholder="Seleccionar moneda" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ARS">🇦🇷 Pesos (ARS)</SelectItem>
+                <SelectItem value="USD">🇺🇸 Dólares (USD)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
             <Label className="text-sm font-semibold">Categoría</Label>
             <Select
               key={categories.length > 0 ? "loaded" : "loading"}
               value={categoryId || ""}
-              onValueChange={(val) => setCategoryId(val)}
+              onValueChange={(val) => {
+                if (val === "new-category") {
+                  setShowCreateCategory(true);
+                } else {
+                  setCategoryId(val);
+                }
+              }}
             >
               <SelectTrigger className="h-11">
                 <SelectValue placeholder="Seleccionar categoría" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem
+                  value="new-category"
+                  className="text-indigo-600 font-medium focus:text-indigo-700 bg-indigo-50 focus:bg-indigo-100 cursor-pointer"
+                >
+                  + Nueva categoría
+                </SelectItem>
                 {categories.map((cat) => (
                   <SelectItem key={cat.id} value={String(cat.id)}>
                     {cat.name}
@@ -184,7 +217,7 @@ export const BudgetModal = ({ open, onClose, initialData }: Props) => {
             <Label className="text-sm font-semibold">Monto límite</Label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">
-                $
+                {currency === "USD" ? "U$S" : "$"}
               </span>
               <Input
                 type="text"
@@ -273,6 +306,17 @@ export const BudgetModal = ({ open, onClose, initialData }: Props) => {
           </div>
         </form>
       </DialogContent>
+      {showCreateCategory && (
+        <CreateCategoryModal
+          open={showCreateCategory}
+          onClose={() => setShowCreateCategory(false)}
+          defaultType="EXPENSE"
+          onCreated={() => {
+            fetchCategories();
+            setShowCreateCategory(false);
+          }}
+        />
+      )}
     </Dialog>
   );
 };

@@ -1,4 +1,11 @@
-import { Home, LayoutGrid, BarChart2, User, Target } from "lucide-react";
+import {
+  Home,
+  LayoutGrid,
+  BarChart2,
+  User,
+  Target,
+  Calendar,
+} from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { useUser } from "../../hooks/useUser";
 
@@ -7,7 +14,8 @@ const navItems = [
   { href: "/transactions", icon: BarChart2, label: "Movimientos" },
   { href: "/budgets", icon: LayoutGrid, label: "Pres" },
   { href: "/goals", icon: Target, label: "Metas" },
-  { href: "/profile", icon: User, label: "" },
+  { href: "/pending", icon: Calendar, label: "Pendientes" },
+  { href: "/profile", icon: User, label: "Perfil" },
 ];
 
 export const MobileNav = () => {

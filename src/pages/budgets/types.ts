@@ -10,4 +10,5 @@ export interface Budget {
   startDate: string;
   endDate: string;
   autoRenew: boolean;
+  currency: string;
 }

@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "../lib/supabase"; // Importamos Supabase
+import { useCurrency } from "../context/CurrencyContext"; // Import useCurrency
 import {
   Card,
   CardContent,
@@ -19,17 +20,19 @@ interface Transaction {
 }
 
 export const RecentTransactionsCard = () => {
+  const { currency } = useCurrency(); // Get active currency
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchTransactions = useCallback(async () => {
     try {
       setLoading(true);
-      
+
       // Consulta optimizada: Trae las últimas 10 transacciones + el nombre de la categoría
       const { data, error } = await supabase
         .from("transactions")
         .select("*, categories(name)") // Hacemos "Join" con la tabla categorias
+        .eq("currency", currency) // Filter by currency
         .order("date", { ascending: false }) // Ordenamos por fecha (más reciente primero)
         .limit(10); // Solo traemos 10
 
@@ -41,7 +44,7 @@ export const RecentTransactionsCard = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [currency]); // Add currency to dependency
 
   useEffect(() => {
     fetchTransactions();
@@ -66,7 +69,9 @@ export const RecentTransactionsCard = () => {
         <div className="space-y-3 max-h-64 overflow-y-auto pr-2">
           {loading ? (
             <div className="space-y-3">
-               <p className="text-sm text-gray-400 animate-pulse">Cargando movimientos...</p>
+              <p className="text-sm text-gray-400 animate-pulse">
+                Cargando movimientos...
+              </p>
             </div>
           ) : transactions.length === 0 ? (
             <p className="text-sm text-gray-500">
@@ -79,7 +84,7 @@ export const RecentTransactionsCard = () => {
               // Ajuste de zona horaria manual si es necesario, o usar UTC
               // Para visualización simple:
               const formattedDate = localDate.toLocaleDateString("es-AR", {
-                timeZone: "UTC" 
+                timeZone: "UTC",
               });
 
               return (
@@ -91,8 +96,7 @@ export const RecentTransactionsCard = () => {
                     <p className="font-medium">{tx.description}</p>
                     <p className="text-xs text-muted-foreground">
                       {/* Accedemos al nombre de la categoría a través de la relación */}
-                      {tx.categories?.name || "Sin categoría"} -{" "}
-                      {formattedDate}
+                      {tx.categories?.name || "Sin categoría"} - {formattedDate}
                     </p>
                   </div>
                   <p
@@ -100,7 +104,8 @@ export const RecentTransactionsCard = () => {
                       tx.type === "INCOME" ? "text-green-600" : "text-red-500"
                     }`}
                   >
-                    {tx.type === "INCOME" ? "+" : "-"}$
+                    {tx.type === "INCOME" ? "+" : "-"}
+                    {currency === "USD" ? "U$S" : "$"}
                     {Number(tx.amount).toLocaleString("es-AR")}
                   </p>
                 </div>

@@ -18,10 +18,11 @@ import {
 } from "../../components/ui/dialog";
 import { useNavigate } from "react-router-dom";
 import { CreateCategoryModal } from "../../components/CreateCategoryModal";
+import { ManageCategoriesModal } from "../../components/ManageCategoriesModal";
 
 // Actualizamos la interfaz para usar UUID (string)
 interface Transaction {
-  id: string; 
+  id: string;
   description: string;
   amount: number;
   date: string;
@@ -42,6 +43,8 @@ export const TransactionsPage = () => {
     useState<Transaction | null>(null);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   const [showCreateCategoryModal, setShowCreateCategoryModal] = useState(false);
+  const [showManageCategoriesModal, setShowManageCategoriesModal] =
+    useState(false);
 
   const fetchTransactions = useCallback(async () => {
     try {
@@ -67,7 +70,7 @@ export const TransactionsPage = () => {
     const handleUpdate = () => fetchTransactions();
     window.addEventListener("transaction-created", handleUpdate);
     window.addEventListener("transaction-updated", handleUpdate);
-    
+
     return () => {
       window.removeEventListener("transaction-created", handleUpdate);
       window.removeEventListener("transaction-updated", handleUpdate);
@@ -87,7 +90,7 @@ export const TransactionsPage = () => {
 
       setShowConfirmDelete(false);
       setTransactionToDelete(null);
-      
+
       // Disparar evento para que otros componentes (como el Dashboard) se enteren
       window.dispatchEvent(new Event("transaction-updated"));
       fetchTransactions();
@@ -123,6 +126,13 @@ export const TransactionsPage = () => {
           <div className="flex flex-wrap gap-2">
             <Button
               variant="outline"
+              onClick={() => setShowManageCategoriesModal(true)}
+              className="mt-4"
+            >
+              Gestionar categorías
+            </Button>
+            <Button
+              variant="outline"
               onClick={() => setShowCreateCategoryModal(true)}
               className="mt-4"
             >
@@ -139,7 +149,9 @@ export const TransactionsPage = () => {
         <CardContent>
           <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-2">
             {loading ? (
-              <p className="text-sm text-gray-400 animate-pulse">Cargando transacciones...</p>
+              <p className="text-sm text-gray-400 animate-pulse">
+                Cargando transacciones...
+              </p>
             ) : transactions.length === 0 ? (
               <p className="text-sm text-gray-500">
                 No hay transacciones registradas.
@@ -158,7 +170,9 @@ export const TransactionsPage = () => {
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {tx.categories?.name || "Sin categoría"} -{" "}
-                        {localDate.toLocaleDateString("es-AR", { timeZone: 'UTC' })}
+                        {localDate.toLocaleDateString("es-AR", {
+                          timeZone: "UTC",
+                        })}
                       </p>
                     </div>
                     <div className="flex flex-col items-end min-w-[100px]">
@@ -200,22 +214,22 @@ export const TransactionsPage = () => {
 
       {/* Modales */}
       {/* Modales */}
-{editingTransaction && (
-  <EditTransactionModal
-    open={!!editingTransaction}
-    transaction={{
-      id: editingTransaction.id,
-      description: editingTransaction.description,
-      amount: editingTransaction.amount,
-      date: editingTransaction.date,
-      type: editingTransaction.type,
-      // Cambiamos categoryId por category_id y quitamos el Number()
-      category_id: editingTransaction.category_id, 
-      categoryName: editingTransaction.categories?.name,
-    }}
-    onClose={() => setEditingTransaction(null)}
-  />
-)}
+      {editingTransaction && (
+        <EditTransactionModal
+          open={!!editingTransaction}
+          transaction={{
+            id: editingTransaction.id,
+            description: editingTransaction.description,
+            amount: editingTransaction.amount,
+            date: editingTransaction.date,
+            type: editingTransaction.type,
+            // Cambiamos categoryId por category_id y quitamos el Number()
+            category_id: editingTransaction.category_id,
+            categoryName: editingTransaction.categories?.name,
+          }}
+          onClose={() => setEditingTransaction(null)}
+        />
+      )}
 
       {showCreateModal && (
         <CreateTransactionModal
@@ -224,7 +238,7 @@ export const TransactionsPage = () => {
           typeSelected="EXPENSE"
         />
       )}
-      
+
       {showCreateCategoryModal && (
         <CreateCategoryModal
           open={showCreateCategoryModal}
@@ -235,6 +249,14 @@ export const TransactionsPage = () => {
           }}
         />
       )}
+
+      <ManageCategoriesModal
+        open={showManageCategoriesModal}
+        onClose={() => setShowManageCategoriesModal(false)}
+        onChanged={() => {
+          fetchTransactions(); // Refrescar por si se borraron categorías en uso (aunque el modal lo previene, por consistencia)
+        }}
+      />
 
       {/* Confirmación de Borrado */}
       {showConfirmDelete && transactionToDelete && (
