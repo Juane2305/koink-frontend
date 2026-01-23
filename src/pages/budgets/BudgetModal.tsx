@@ -70,7 +70,9 @@ export const BudgetModal = ({ open, onClose, initialData }: Props) => {
         setLimitAmount(initialData.limitAmount);
         setPeriod(initialData.period);
         // Manejo seguro de la fecha
-        setStartDate(initialData.startDate ? new Date(initialData.startDate) : new Date());
+        setStartDate(
+          initialData.startDate ? new Date(initialData.startDate) : new Date(),
+        );
       } else {
         setCategoryId(null);
         setLimitAmount(0);
@@ -81,7 +83,14 @@ export const BudgetModal = ({ open, onClose, initialData }: Props) => {
   }, [open, initialData]);
 
   const handleSubmit = async () => {
-    if (!user || !categoryId || isNaN(limitAmount) || limitAmount <= 0 || !period || !startDate)
+    if (
+      !user ||
+      !categoryId ||
+      isNaN(limitAmount) ||
+      limitAmount <= 0 ||
+      !period ||
+      !startDate
+    )
       return;
 
     setLoading(true);
@@ -107,9 +116,7 @@ export const BudgetModal = ({ open, onClose, initialData }: Props) => {
         if (error) throw error;
       } else {
         // CREAR (INSERT)
-        const { error } = await supabase
-          .from("budgets")
-          .insert(payload);
+        const { error } = await supabase.from("budgets").insert(payload);
 
         if (error) throw error;
       }
@@ -127,7 +134,10 @@ export const BudgetModal = ({ open, onClose, initialData }: Props) => {
         ("message" in err || "code" in err)
       ) {
         const errorObj = err as { message?: string; code?: string };
-        if (errorObj.message?.includes("duplicate") || errorObj.code === "23505") {
+        if (
+          errorObj.message?.includes("duplicate") ||
+          errorObj.code === "23505"
+        ) {
           setErrorMessage("Ya existe un presupuesto para esta categoría.");
         } else {
           setErrorMessage("No se pudo guardar. Intenta nuevamente.");
@@ -151,6 +161,11 @@ export const BudgetModal = ({ open, onClose, initialData }: Props) => {
 
         <form
           className="space-y-4"
+          // Agregamos esto para evitar el GET /budgets?
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSubmit();
+          }}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               e.preventDefault();
@@ -188,8 +203,8 @@ export const BudgetModal = ({ open, onClose, initialData }: Props) => {
               onChange={(e) => {
                 const raw = e.target.value
                   .replace(/\./g, "")
-                  .replace(/\$/g, "") 
-                  .replace(/\D/g, ""); 
+                  .replace(/\$/g, "")
+                  .replace(/\D/g, "");
                 const parsed = parseFloat(raw);
                 if (!isNaN(parsed)) {
                   setLimitAmount(parsed);
@@ -234,13 +249,18 @@ export const BudgetModal = ({ open, onClose, initialData }: Props) => {
             <p className="text-red-500 text-sm font-medium">{errorMessage}</p>
           )}
 
-          <Button onClick={handleSubmit} disabled={loading} className="w-full">
-            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          <Button
+            type="button" // <--- Importante: evita que el botón actúe como submit nativo
+            onClick={handleSubmit}
+            disabled={loading}
+            className="w-full"
+          >
+            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             {loading
               ? "Guardando..."
               : isEdit
-              ? "Guardar cambios"
-              : "Crear presupuesto"}
+                ? "Guardar cambios"
+                : "Crear presupuesto"}
           </Button>
         </form>
       </DialogContent>
