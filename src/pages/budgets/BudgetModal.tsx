@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../../lib/supabase"; // Usamos Supabase
-import { useAuth } from "../../hooks/useAuth"; // Necesitamos el usuario
+import { supabase } from "../../lib/supabase";
+import { useAuth } from "../../hooks/useAuth";
 import {
   Dialog,
   DialogContent,
@@ -17,8 +17,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../components/ui/select";
+import { Switch } from "../../components/ui/switch"; // Importamos el Switch
 import { Calendar } from "../../components/ui/calendar";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertCircle } from "lucide-react";
 import { BudgetPeriod, Budget } from "./types";
 
 interface Props {
@@ -28,29 +29,30 @@ interface Props {
 }
 
 interface Category {
-  id: string; // UUID es string
+  id: string;
   name: string;
   type: "INCOME" | "EXPENSE";
 }
 
 export const BudgetModal = ({ open, onClose, initialData }: Props) => {
-  const { user } = useAuth(); // Obtenemos usuario autenticado
+  const { user } = useAuth();
   const isEdit = !!initialData;
   const [categories, setCategories] = useState<Category[]>([]);
-  const [categoryId, setCategoryId] = useState<string | null>(null); // UUID string
+  const [categoryId, setCategoryId] = useState<string | null>(null);
   const [limitAmount, setLimitAmount] = useState(0);
   const [period, setPeriod] = useState<BudgetPeriod>("MONTHLY");
   const [startDate, setStartDate] = useState<Date>(new Date());
+
+  // Nuevo estado para la auto-renovación
+  const [autoRenew, setAutoRenew] = useState(false);
+
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Cargar categorías (filtradas por el usuario automáticamente por RLS)
   const fetchCategories = async () => {
     try {
-      const { data, error } = await supabase
-        .from("categories")
-        .select("*")
-        .eq("type", "EXPENSE"); // Generalmente se presupuestan gastos
+      // Traemos todas las categorías para asegurar que encontramos la del presupuesto
+      const { data, error } = await supabase.from("categories").select("*");
 
       if (error) throw error;
       setCategories(data || []);
@@ -60,90 +62,88 @@ export const BudgetModal = ({ open, onClose, initialData }: Props) => {
   };
 
   useEffect(() => {
-    setErrorMessage(null);
-
     if (open) {
+      setErrorMessage(null);
       fetchCategories();
+    }
+  }, [open]);
 
+  useEffect(() => {
+    if (open) {
       if (initialData) {
-        setCategoryId(String(initialData.categoryId)); // Convertimos a string para evitar error de tipo
+        const rawId =
+          initialData.categoryId ?? (initialData as any).category_id;
+        const normalizedId = rawId ? String(rawId) : null;
+
+        if (normalizedId) setCategoryId(normalizedId);
+
         setLimitAmount(initialData.limitAmount);
         setPeriod(initialData.period);
-        // Manejo seguro de la fecha
         setStartDate(
           initialData.startDate ? new Date(initialData.startDate) : new Date(),
         );
+        setAutoRenew(initialData.autoRenew || false);
       } else {
         setCategoryId(null);
         setLimitAmount(0);
         setPeriod("MONTHLY");
         setStartDate(new Date());
+        setAutoRenew(false);
       }
     }
-  }, [open, initialData]);
+  }, [open, initialData, categories.length]);
 
-  const handleSubmit = async () => {
-    if (
-      !user ||
-      !categoryId ||
-      isNaN(limitAmount) ||
-      limitAmount <= 0 ||
-      !period ||
-      !startDate
-    )
-      return;
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
 
-    setLoading(true);
     setErrorMessage(null);
 
-    // Mapeamos los datos para Supabase (snake_case)
+    if (!user) return;
+    if (!categoryId) {
+      setErrorMessage("Debes seleccionar una categoría.");
+      return;
+    }
+    if (limitAmount <= 0) {
+      setErrorMessage("El monto límite debe ser mayor a 0.");
+      return;
+    }
+
+    setLoading(true);
+
     const payload = {
       user_id: user.id,
       category_id: categoryId,
       limit_amount: limitAmount,
       period: period,
       start_date: startDate.toISOString(),
+      auto_renew: autoRenew, // Enviamos el nuevo campo
     };
 
     try {
-      if (initialData) {
-        // ACTUALIZAR (UPDATE)
+      if (isEdit && initialData) {
         const { error } = await supabase
           .from("budgets")
           .update(payload)
-          .eq("id", initialData.id); // UUID del presupuesto
+          .eq("id", initialData.id);
 
         if (error) throw error;
       } else {
-        // CREAR (INSERT)
         const { error } = await supabase.from("budgets").insert(payload);
-
         if (error) throw error;
       }
 
-      // Disparar evento para recargar la lista de presupuestos
       window.dispatchEvent(new Event("budget-updated"));
       onClose();
     } catch (err: unknown) {
-      console.error("❌ Error al guardar presupuesto:", err);
-
-      // Manejo de errores comunes de base de datos
-      if (
-        typeof err === "object" &&
-        err !== null &&
-        ("message" in err || "code" in err)
-      ) {
-        const errorObj = err as { message?: string; code?: string };
-        if (
-          errorObj.message?.includes("duplicate") ||
-          errorObj.code === "23505"
-        ) {
-          setErrorMessage("Ya existe un presupuesto para esta categoría.");
+      console.error("❌ Error al guardar:", err);
+      if (typeof err === "object" && err !== null && "code" in err) {
+        if ((err as { code?: string }).code === "23505") {
+          setErrorMessage("Ya tienes un presupuesto para esta categoría.");
         } else {
-          setErrorMessage("No se pudo guardar. Intenta nuevamente.");
+          setErrorMessage("Ocurrió un error al intentar guardar.");
         }
       } else {
-        setErrorMessage("No se pudo guardar. Intenta nuevamente.");
+        setErrorMessage("Ocurrió un error al intentar guardar.");
       }
     } finally {
       setLoading(false);
@@ -152,39 +152,27 @@ export const BudgetModal = ({ open, onClose, initialData }: Props) => {
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>
+          <DialogTitle className="text-xl font-bold">
             {isEdit ? "Editar presupuesto" : "Nuevo presupuesto"}
           </DialogTitle>
         </DialogHeader>
 
-        <form
-          className="space-y-4"
-          // Agregamos esto para evitar el GET /budgets?
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleSubmit();
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              handleSubmit();
-            }
-          }}
-        >
-          <div className="flex flex-col gap-3">
-            <Label>Categoría</Label>
+        <form onSubmit={handleSubmit} className="space-y-6 pt-2">
+          <div className="space-y-2">
+            <Label className="text-sm font-semibold">Categoría</Label>
             <Select
+              key={categories.length > 0 ? "loaded" : "loading"}
               value={categoryId || ""}
               onValueChange={(val) => setCategoryId(val)}
             >
-              <SelectTrigger>
+              <SelectTrigger className="h-11">
                 <SelectValue placeholder="Seleccionar categoría" />
               </SelectTrigger>
               <SelectContent>
                 {categories.map((cat) => (
-                  <SelectItem key={cat.id} value={cat.id}>
+                  <SelectItem key={cat.id} value={String(cat.id)}>
                     {cat.name}
                   </SelectItem>
                 ))}
@@ -192,37 +180,33 @@ export const BudgetModal = ({ open, onClose, initialData }: Props) => {
             </Select>
           </div>
 
-          <div className="flex flex-col gap-3">
-            <Label>Monto límite</Label>
-            <Input
-              type="text"
-              inputMode="numeric"
-              value={
-                limitAmount ? `$${limitAmount.toLocaleString("es-AR")}` : ""
-              }
-              onChange={(e) => {
-                const raw = e.target.value
-                  .replace(/\./g, "")
-                  .replace(/\$/g, "")
-                  .replace(/\D/g, "");
-                const parsed = parseFloat(raw);
-                if (!isNaN(parsed)) {
-                  setLimitAmount(parsed);
-                } else {
-                  setLimitAmount(0);
-                }
-              }}
-              placeholder="$0.00"
-            />
+          <div className="space-y-2">
+            <Label className="text-sm font-semibold">Monto límite</Label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">
+                $
+              </span>
+              <Input
+                type="text"
+                inputMode="numeric"
+                className="pl-7 h-11 text-lg font-medium"
+                value={limitAmount ? limitAmount.toLocaleString("es-AR") : ""}
+                onChange={(e) => {
+                  const raw = e.target.value.replace(/\D/g, "");
+                  setLimitAmount(Number(raw) || 0);
+                }}
+                placeholder="0"
+              />
+            </div>
           </div>
 
-          <div className="flex flex-col gap-3">
-            <Label>Período</Label>
+          <div className="space-y-2">
+            <Label className="text-sm font-semibold">Período</Label>
             <Select
               value={period}
               onValueChange={(val) => setPeriod(val as BudgetPeriod)}
             >
-              <SelectTrigger>
+              <SelectTrigger className="h-11">
                 <SelectValue placeholder="Seleccionar período" />
               </SelectTrigger>
               <SelectContent>
@@ -234,34 +218,59 @@ export const BudgetModal = ({ open, onClose, initialData }: Props) => {
             </Select>
           </div>
 
-          <div className="flex flex-col items-start gap-3">
-            <Label>Fecha de inicio</Label>
-            <Calendar
-              mode="single"
-              selected={startDate}
-              onSelect={(date) => date && setStartDate(date)}
-              // Permitimos fechas futuras o pasadas según la lógica que prefieras
-              className="rounded-md border"
-            />
+          <div className="space-y-2">
+            <Label className="text-sm font-semibold">Fecha de inicio</Label>
+            <div className="flex justify-center border rounded-lg p-2 bg-slate-50">
+              <Calendar
+                mode="single"
+                selected={startDate}
+                onSelect={(date) => date && setStartDate(date)}
+                className="rounded-md"
+              />
+            </div>
+          </div>
+
+          {/* Switch de Auto-renovación */}
+          <div className="flex flex-row items-center justify-between rounded-lg border p-4 shadow-sm bg-white">
+            <div className="space-y-0.5">
+              <Label className="text-sm font-semibold">Auto-renovación</Label>
+              <p className="text-xs text-muted-foreground">
+                Reiniciar el presupuesto automáticamente.
+              </p>
+            </div>
+            <Switch checked={autoRenew} onCheckedChange={setAutoRenew} />
           </div>
 
           {errorMessage && (
-            <p className="text-red-500 text-sm font-medium">{errorMessage}</p>
+            <div className="flex items-center gap-2 p-3 text-sm text-red-600 bg-red-50 rounded-lg border border-red-100">
+              <AlertCircle className="h-4 w-4" />
+              {errorMessage}
+            </div>
           )}
 
-          <Button
-            type="button" // <--- Importante: evita que el botón actúe como submit nativo
-            onClick={handleSubmit}
-            disabled={loading}
-            className="w-full"
-          >
-            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            {loading
-              ? "Guardando..."
-              : isEdit
-                ? "Guardar cambios"
-                : "Crear presupuesto"}
-          </Button>
+          <div className="flex gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              className="flex-1 h-12"
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              disabled={loading}
+              className="flex-[2] h-12 bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-100"
+            >
+              {loading ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : isEdit ? (
+                "Guardar cambios"
+              ) : (
+                "Crear presupuesto"
+              )}
+            </Button>
+          </div>
         </form>
       </DialogContent>
     </Dialog>

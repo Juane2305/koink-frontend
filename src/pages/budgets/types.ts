@@ -1,12 +1,13 @@
 export type BudgetPeriod = "DAILY" | "WEEKLY" | "MONTHLY" | "ANNUAL";
 
 export interface Budget {
-    id: number;
-    categoryId: number;
-    categoryName: string;
-    period: BudgetPeriod;
-    limitAmount: number;
-    spentAmount: number;
-    startDate: string;
-    endDate: string;
-  }
+  id: string;
+  categoryName: string;
+  categoryId: number | string;
+  limitAmount: number;
+  spentAmount: number;
+  period: BudgetPeriod;
+  startDate: string;
+  endDate: string;
+  autoRenew: boolean;
+}

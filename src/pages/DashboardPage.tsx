@@ -8,16 +8,18 @@ import {
   CardTitle,
 } from "../components/ui/card";
 import { Skeleton } from "../components/ui/skeleton";
-import { 
-  ArrowDownCircle, 
-  ArrowUpCircle, 
-  DollarSign, 
-  PiggyBank, 
+import {
+  ArrowDownCircle,
+  ArrowUpCircle,
+  DollarSign,
+  PiggyBank,
   Plus,
-  LayoutDashboard
+  LayoutDashboard,
+  Wallet,
 } from "lucide-react";
 import { RecentTransactionsCard } from "../components/RecentTransactionsCard";
 import { ActiveBudgetsCard } from "../components/ActiveBudgetsCard";
+import { SavingGoalsCard } from "../components/SavingGoalsCard";
 import { CreateTransactionModal } from "../components/CreateTransactionModal";
 import { Button } from "../components/ui/button";
 import { LogoutButton } from "../components/LogoutButton";
@@ -27,14 +29,17 @@ import { useNavigate } from "react-router-dom";
 export const DashboardPage = () => {
   const { data, loading, refetch } = useDashboardData();
   const [showModal, setShowModal] = useState(false);
-  const [typeSelected, setTypeSelected] = useState<"INCOME" | "EXPENSE">("INCOME");
+  const [typeSelected, setTypeSelected] = useState<"INCOME" | "EXPENSE">(
+    "INCOME",
+  );
   const navigate = useNavigate();
   const user = useUser();
 
   useEffect(() => {
     const handleUpdate = () => refetch();
     window.addEventListener("transaction-created", handleUpdate);
-    return () => window.removeEventListener("transaction-created", handleUpdate);
+    return () =>
+      window.removeEventListener("transaction-created", handleUpdate);
   }, [refetch]);
 
   if (loading) {
@@ -57,7 +62,10 @@ export const DashboardPage = () => {
     );
   }
 
-  if (!data) return <p className="text-center mt-10 text-red-500">Error al cargar datos.</p>;
+  if (!data)
+    return (
+      <p className="text-center mt-10 text-red-500">Error al cargar datos.</p>
+    );
 
   return (
     <div className="min-h-screen bg-[#f8fafc]">
@@ -86,11 +94,16 @@ export const DashboardPage = () => {
               <LayoutDashboard className="h-8 w-8 text-indigo-500" />
               Dashboard
             </h1>
-            <p className="text-slate-500 text-sm">Gestiona tus movimientos y presupuestos.</p>
+            <p className="text-slate-500 text-sm">
+              Gestiona tus movimientos y presupuestos.
+            </p>
           </div>
 
           <Button
-            onClick={() => { setShowModal(true); setTypeSelected("EXPENSE"); }}
+            onClick={() => {
+              setShowModal(true);
+              setTypeSelected("EXPENSE");
+            }}
             className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all h-12 px-6"
           >
             <Plus className="mr-2 h-5 w-5" />
@@ -99,15 +112,20 @@ export const DashboardPage = () => {
         </div>
 
         {/* TARJETAS DE RESUMEN */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {/* INGRESOS */}
-          <Card 
+          <Card
             className="relative overflow-hidden border-none shadow-sm cursor-pointer hover:shadow-md transition-shadow group"
-            onClick={() => { setShowModal(true); setTypeSelected("INCOME"); }}
+            onClick={() => {
+              setShowModal(true);
+              setTypeSelected("INCOME");
+            }}
           >
             <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500" />
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-slate-500 uppercase tracking-wider">Ingresos</CardTitle>
+              <CardTitle className="text-sm font-medium text-slate-500 uppercase tracking-wider">
+                Ingresos
+              </CardTitle>
               <div className="p-2 bg-emerald-50 rounded-lg text-emerald-600 group-hover:scale-110 transition-transform">
                 <ArrowUpCircle className="h-5 w-5" />
               </div>
@@ -120,13 +138,18 @@ export const DashboardPage = () => {
           </Card>
 
           {/* EGRESOS */}
-          <Card 
+          <Card
             className="relative overflow-hidden border-none shadow-sm cursor-pointer hover:shadow-md transition-shadow group"
-            onClick={() => { setShowModal(true); setTypeSelected("EXPENSE"); }}
+            onClick={() => {
+              setShowModal(true);
+              setTypeSelected("EXPENSE");
+            }}
           >
             <div className="absolute top-0 left-0 w-1 h-full bg-rose-500" />
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-slate-500 uppercase tracking-wider">Egresos</CardTitle>
+              <CardTitle className="text-sm font-medium text-slate-500 uppercase tracking-wider">
+                Egresos
+              </CardTitle>
               <div className="p-2 bg-rose-50 rounded-lg text-rose-600 group-hover:scale-110 transition-transform">
                 <ArrowDownCircle className="h-5 w-5" />
               </div>
@@ -138,15 +161,17 @@ export const DashboardPage = () => {
             </CardContent>
           </Card>
 
-          {/* BALANCE */}
-          <Card 
-            className="relative overflow-hidden border-none shadow-sm cursor-pointer hover:shadow-md transition-shadow group sm:col-span-2 lg:col-span-1"
+          {/* BALANCE TOTAL */}
+          <Card
+            className="relative overflow-hidden border-none shadow-sm cursor-pointer hover:shadow-md transition-shadow group"
             onClick={() => navigate("/transactions")}
           >
-            <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500" />
+            <div className="absolute top-0 left-0 w-1 h-full bg-slate-400" />
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-slate-500 uppercase tracking-wider">Balance Total</CardTitle>
-              <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600 group-hover:scale-110 transition-transform">
+              <CardTitle className="text-sm font-medium text-slate-500 uppercase tracking-wider">
+                Balance Total
+              </CardTitle>
+              <div className="p-2 bg-slate-50 rounded-lg text-slate-600 group-hover:scale-110 transition-transform">
                 <DollarSign className="h-5 w-5" />
               </div>
             </CardHeader>
@@ -154,6 +179,30 @@ export const DashboardPage = () => {
               <div className="text-2xl font-bold text-slate-900">
                 ${data.balance.toLocaleString("es-AR")}
               </div>
+            </CardContent>
+          </Card>
+
+          {/* DISPONIBLE PARA GASTAR */}
+          <Card
+            className="relative overflow-hidden border-none shadow-sm cursor-pointer hover:shadow-md transition-shadow group bg-indigo-600 text-white"
+            onClick={() => navigate("/goals")}
+          >
+            <div className="absolute top-0 left-0 w-1 h-full bg-indigo-300" />
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-indigo-100 uppercase tracking-wider">
+                Disponible
+              </CardTitle>
+              <div className="p-2 bg-indigo-500/50 rounded-lg text-white group-hover:scale-110 transition-transform">
+                <Wallet className="h-5 w-5" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                ${data.availableBalance.toLocaleString("es-AR")}
+              </div>
+              <p className="text-[10px] text-indigo-100 mt-1">
+                Limpio de ahorros en metas
+              </p>
             </CardContent>
           </Card>
         </div>
@@ -166,7 +215,8 @@ export const DashboardPage = () => {
           </div>
 
           {/* Presupuestos y Transacciones lado a lado */}
-          <div className="xl:col-span-5">
+          <div className="xl:col-span-5 space-y-8">
+            <SavingGoalsCard balance={data.availableBalance} />
             <ActiveBudgetsCard />
           </div>
           <div className="xl:col-span-7">

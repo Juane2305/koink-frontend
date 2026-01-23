@@ -6,6 +6,8 @@ export const useDashboardData = () => {
     totalIncome: 0,
     totalExpense: 0,
     balance: 0,
+    reservedAmount: 0,
+    availableBalance: 0,
   });
   const [loading, setLoading] = useState(true);
 
@@ -31,10 +33,22 @@ export const useDashboardData = () => {
         if (t.type === "EXPENSE") expense += amount;
       });
 
+      // 2. Pedimos el acumulado de las metas
+      const { data: goals, error: goalsError } = await supabase
+        .from("goals")
+        .select("current_amount");
+
+      if (goalsError) throw goalsError;
+
+      const totalReserved =
+        goals?.reduce((acc, g) => acc + Number(g.current_amount), 0) || 0;
+
       setData({
         totalIncome: income,
         totalExpense: expense,
         balance: income - expense,
+        reservedAmount: totalReserved,
+        availableBalance: income - expense - totalReserved,
       });
     } catch (error) {
       console.error("Error cargando dashboard:", error);

@@ -1,11 +1,19 @@
 import { useUser } from "../../hooks/useUser"; // o la ruta correcta
-import { Home, LayoutGrid, BarChart2, User, PiggyBank } from "lucide-react";
+import {
+  Home,
+  LayoutGrid,
+  BarChart2,
+  User,
+  PiggyBank,
+  Target,
+} from "lucide-react";
 import { NavLink } from "react-router-dom";
 
 const navItems = [
   { href: "/dashboard", icon: Home, label: "Inicio" },
   { href: "/transactions", icon: BarChart2, label: "Movimientos" },
   { href: "/budgets", icon: LayoutGrid, label: "Presupuestos" },
+  { href: "/goals", icon: Target, label: "Metas" },
   { href: "/profile", icon: User, label: "Perfil" },
 ];
 
@@ -14,10 +22,10 @@ export const DesktopSidebar = () => {
 
   return (
     <aside className="hidden md:flex md:flex-col md:w-64 md:min-h-screen bg-white border-r border-gray-200 shadow-sm">
-        <div className="flex items-center gap-2 text-2xl font-bold pt-6 mx-auto">
-          <PiggyBank className="h-8 w-8 text-indigo-500" />
-          <span>Koink.</span>
-        </div>
+      <div className="flex items-center gap-2 text-2xl font-bold pt-6 mx-auto">
+        <PiggyBank className="h-8 w-8 text-indigo-500" />
+        <span>Koink.</span>
+      </div>
       <nav className="flex-1 px-4 py-6 space-y-2">
         {navItems.map(({ href, icon: Icon, label }) => (
           <NavLink

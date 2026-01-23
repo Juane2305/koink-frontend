@@ -1,16 +1,16 @@
-import { Home, LayoutGrid, BarChart2, User } from "lucide-react";
+import { Home, LayoutGrid, BarChart2, User, Target } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { useUser } from "../../hooks/useUser";
 
 const navItems = [
   { href: "/dashboard", icon: Home, label: "Inicio" },
   { href: "/transactions", icon: BarChart2, label: "Movimientos" },
-  { href: "/budgets", icon: LayoutGrid, label: "Presupuestos" },
+  { href: "/budgets", icon: LayoutGrid, label: "Pres" },
+  { href: "/goals", icon: Target, label: "Metas" },
   { href: "/profile", icon: User, label: "" },
 ];
 
 export const MobileNav = () => {
-
   const user = useUser();
 
   return (
@@ -26,16 +26,16 @@ export const MobileNav = () => {
               }
             >
               {href === "/profile" && user?.avatar ? (
-              <img
-                src={user.avatar}
-                alt="Avatar"
-                className="w-7 h-7 rounded-full object-cover"
-              />
-            ) : (
-              <Icon className="h-5 w-5" />
-            )}
-            {label}
-          </NavLink>
+                <img
+                  src={user.avatar}
+                  alt="Avatar"
+                  className="w-7 h-7 rounded-full object-cover"
+                />
+              ) : (
+                <Icon className="h-5 w-5" />
+              )}
+              {label}
+            </NavLink>
           </li>
         ))}
       </ul>

@@ -34,28 +34,42 @@ const periodMap: Record<string, string> = {
 };
 
 // Función auxiliar para calcular fechas de inicio y fin según el periodo
-const getPeriodDates = (period: string, budgetStartDate: string) => {
-  const start = new Date(budgetStartDate);
-  const end = new Date(start);
-
-  if (period === "DAILY") {
-    end.setHours(23, 59, 59, 999);
-  } else if (period === "WEEKLY") {
-    end.setDate(start.getDate() + 7);
-    end.setHours(23, 59, 59, 999);
-  } else if (period === "MONTHLY") {
-    // Sumamos exactamente un mes a la fecha elegida
-    end.setMonth(start.getMonth() + 1);
+const getPeriodDates = (period: string, startDate: string, autoRenew: boolean) => {
+  const originalStart = new Date(startDate);
+  const now = new Date();
+  
+  // Si no se auto-renueva, mantenemos la lógica de un solo ciclo
+  if (!autoRenew) {
+    const end = new Date(originalStart);
+    if (period === "DAILY") end.setDate(end.getDate() + 1);
+    else if (period === "WEEKLY") end.setDate(end.getDate() + 7);
+    else if (period === "MONTHLY") end.setMonth(end.getMonth() + 1);
+    else if (period === "ANNUAL") end.setFullYear(end.getFullYear() + 1);
     end.setMilliseconds(end.getMilliseconds() - 1);
-  } else if (period === "ANNUAL") {
-    end.setFullYear(start.getFullYear() + 1);
-    end.setMilliseconds(end.getMilliseconds() - 1);
+    return { start: originalStart.toISOString(), end: end.toISOString() };
   }
 
-  return {
-    start: start.toISOString(),
-    end: end.toISOString(),
-  };
+  // LÓGICA DE AUTO-RENOVACIÓN: Encontramos el ciclo que contiene el día de HOY
+  let currentStart = new Date(originalStart);
+  let currentEnd = new Date(originalStart);
+
+  while (true) {
+    currentEnd = new Date(currentStart);
+    if (period === "DAILY") currentEnd.setDate(currentEnd.getDate() + 1);
+    else if (period === "WEEKLY") currentEnd.setDate(currentEnd.getDate() + 7);
+    else if (period === "MONTHLY") currentEnd.setMonth(currentEnd.getMonth() + 1);
+    else if (period === "ANNUAL") currentEnd.setFullYear(currentEnd.getFullYear() + 1);
+    
+    currentEnd.setMilliseconds(currentEnd.getMilliseconds() - 1);
+
+    // Si 'hoy' está antes del final de este ciclo, este es el ciclo actual
+    if (now <= currentEnd) break;
+
+    // Si no, saltamos al siguiente ciclo
+    currentStart = new Date(currentEnd.getTime() + 1);
+  }
+
+  return { start: currentStart.toISOString(), end: currentEnd.toISOString() };
 };
 
 export const ActiveBudgetsCard = () => {
@@ -79,7 +93,7 @@ export const ActiveBudgetsCard = () => {
         const budgetsWithUsage = await Promise.all(
           budgetsData.map(async (b) => {
             // 2. Pasá la fecha de inicio guardada en el presupuesto (b.start_date)
-            const { start, end } = getPeriodDates(b.period, b.start_date);
+            const { start, end } = getPeriodDates(b.period, b.start_date, b.auto_renew);
 
             const { data: transactions } = await supabase
               .from("transactions")
