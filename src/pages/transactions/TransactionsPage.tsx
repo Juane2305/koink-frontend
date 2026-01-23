@@ -184,7 +184,8 @@ export const TransactionsPage = () => {
                             : "text-red-500"
                         }`}
                       >
-                        {tx.type === "INCOME" ? "+" : "-"}$
+                        {tx.type === "INCOME" ? "+" : "-"}{" "}
+                        {tx.currency === "USD" ? "U$S" : "$"}
                         {Number(tx.amount).toLocaleString("es-AR")}
                       </p>
                       <div className="flex gap-3 mt-1">
