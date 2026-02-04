@@ -217,7 +217,7 @@ export const BudgetModal = ({ open, onClose, initialData }: Props) => {
             <Label className="text-sm font-semibold">Monto límite</Label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">
-                {currency === "USD" ? "U$S" : "$"}
+                $
               </span>
               <Input
                 type="text"
